@@ -48,6 +48,10 @@ input{width:100%;font:inherit;color:var(--text);background:var(--card);border:1p
 .scan{width:100%;padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--line);font-weight:600;margin:-8px 0 18px}
 #vid{width:100%;border-radius:14px;background:#000;aspect-ratio:4/3;object-fit:cover;margin-bottom:10px}
 .manrow{display:flex;gap:8px;align-items:flex-start}.manrow input{margin:0}
+.two{display:flex;gap:8px}.two .btn{flex:1;margin-bottom:8px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom,0px));background:var(--accent);color:var(--on);border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:12px;font-size:14px;z-index:15;box-shadow:0 8px 24px rgba(0,0,0,.2);width:max-content;max-width:calc(100% - 36px)}
+#toast[hidden]{display:none}#toast button{background:transparent;color:inherit;text-decoration:underline;font-weight:600;white-space:nowrap}
+.flash{animation:fl 1.6s}@keyframes fl{0%,60%{box-shadow:0 0 0 3px var(--ok)}100%{box-shadow:0 0 0 3px transparent}}
 h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 8px}
 </style>
 </head>
@@ -59,6 +63,7 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute
   <div id="list"></div>
 </main>
 <div id="bar" hidden><button id="open"><span id="bc"></span><span id="bt"></span></button></div>
+<div id="toast" hidden><span id="tt"></span><button data-a="scan">Scan another</button></div>
 <div id="ov" hidden><div class="sheet" id="sheet"></div></div>
 <div id="sc" hidden><div class="sheet">
   <h2>Scan barcode <button class="x" data-a="scx">✕</button></h2>
@@ -74,7 +79,8 @@ const CONFIG = {
   shopName: "Room 321",
   tagline: "Honesty-based. Order, pay, then ping me.",
   currency: "HK$",
-  whatsapp: "85261683325",   // your number, country code + digits, no + or spaces
+  whatsapp: "85261683325",
+  phone: "61683325",   // your number, country code + digits, no + or spaces
   payments: [
     { id: "alipay",  label: "Alipay",  detail: "Phone: 6168 3325 (WONG, Pak Yin)", link: "", qr: "" },
     { id: "payme",   label: "PayMe",   detail: "PayMe ID: K8548250144<br>Phone: 6168 3325 (WONG, Pak Yin)", link: "https://payme.hsbc/d0fae5ad9fba4a448951d22dbe5a9311", qr: "" },
@@ -109,7 +115,7 @@ function renderList() {
     const ctl = q
       ? `<div class="step"><button data-a="sub" data-id="${i.id}">−</button><span>${q}</span><button data-a="add" data-id="${i.id}">+</button></div>`
       : `<button class="add" data-a="add" data-id="${i.id}">Add</button>`;
-    return `<div class="item"><div class="emoji">${i.emoji}</div><div class="info"><b>${i.name}</b><span>${i.desc}</span><em>${money(i.price)}${i.unit ? " / " + i.unit : ""}</em></div>${ctl}</div>`;
+    return `<div class="item" id="it-${i.id}"><div class="emoji">${i.emoji}</div><div class="info"><b>${i.name}</b><span>${i.desc}</span><em>${money(i.price)}${i.unit ? " / " + i.unit : ""}</em></div>${ctl}</div>`;
   }).join("");
   const n = count();
   $("#bar").hidden = !n;
@@ -140,7 +146,7 @@ function renderSheet() {
       <p>${p.detail}</p>
       <p><b>Amount: ${money(total())}</b></p>
       ${p.link ? `<a class="btn" href="${p.link}" target="_blank" rel="noopener">Open ${p.label}</a>` : ""}
-      ${p.cash ? "" : '<button class="btn" data-a="copyamt">Copy amount</button>'}
+      ${p.cash ? "" : '<div class="two"><button class="btn" data-a="copyamt">Copy amount</button><button class="btn" data-a="copyphone">Copy phone no.</button></div>'}
     </div>
     <h3>2 · Let me know</h3>
     <p class="hint">After paying, tap below to send me this message:</p>
@@ -176,9 +182,18 @@ document.addEventListener("click", e => {
   else if (a === "scx") stopScan();
   else if (a === "manadd") { handleCode($("#man").value, true); $("#man").value = ""; }
   else if (a === "copyamt") copy(String(total()), b);
+  else if (a === "copyphone") copy(CONFIG.phone, b);
   else if (a === "copymsg") copy(message(), b);
 });
-let reader = null, last = "", lastT = 0;
+let reader = null, last = "", lastT = 0, toastT;
+function flash(it) {
+  const el = $("#it-" + it.id);
+  if (el) { el.scrollIntoView({ block: "center", behavior: "smooth" }); el.classList.add("flash"); }
+  $("#tt").textContent = "✓ Added " + it.name + " (×" + cart[it.id] + ")";
+  $("#toast").hidden = false; clearTimeout(toastT);
+  toastT = setTimeout(() => { $("#toast").hidden = true; }, 5000);
+  try { navigator.vibrate && navigator.vibrate(60); } catch (e) {}
+}
 function say(t) { $("#st").textContent = t; }
 function handleCode(raw, manual) {
   const c = String(raw).replace(/\D/g, ""); if (!c) return;
@@ -186,16 +201,16 @@ function handleCode(raw, manual) {
   if (!manual && c === last && now - lastT < 2500) return;
   last = c; lastT = now;
   const it = ITEMS.find(i => i.code === c);
-  if (it) { cart[it.id] = (cart[it.id] || 0) + 1; renderList(); say("✓ Added " + it.name + " (×" + cart[it.id] + "). Scan another, or close."); }
+  if (it) { cart[it.id] = (cart[it.id] || 0) + 1; stopScan(); renderList(); flash(it); }
   else say("Barcode not recognised: " + c);
 }
 async function startScan() {
-  $("#sc").hidden = false; say("Starting camera…");
+  last = ""; $("#sc").hidden = false; say("Starting camera…");
   try {
     if (!window.ZXing) throw new Error("no scanner");
     reader = new ZXing.BrowserMultiFormatReader();
     await reader.decodeFromConstraints({ video: { facingMode: "environment" } }, $("#vid"), r => { if (r) handleCode(r.getText()); });
-    say("Point the camera at the barcode. Each scan adds 1.");
+    say("Point the camera at the barcode. It closes after a scan.");
   } catch (e) { say("Camera isn’t available here. Type the barcode number below instead."); }
 }
 function stopScan() { try { reader && reader.reset(); } catch (e) {} reader = null; $("#sc").hidden = true; }
