@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Room Shop</title>
+<script defer src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+<style>
+:root{--bg:#f6f6f4;--card:#fff;--text:#161616;--muted:#77777d;--line:#e8e8e4;--accent:#161616;--on:#fff;--ok:#1f9d55;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111112;--card:#1b1b1d;--text:#f2f2f0;--muted:#92929a;--line:#2a2a2d;--accent:#f2f2f0;--on:#111;--ok:#4cc57d;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111112;--card:#1b1b1d;--text:#f2f2f0;--muted:#92929a;--line:#2a2a2d;--accent:#f2f2f0;--on:#111;--ok:#4cc57d;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:520px;margin:0 auto;padding:28px 18px 130px}
+h1{font-size:30px;letter-spacing:-.02em;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 24px}
+.item{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:10px}
+.emoji{font-size:30px;width:52px;height:52px;display:grid;place-items:center;background:var(--bg);border-radius:14px;flex:none}
+.info{flex:1;min-width:0;display:flex;flex-direction:column}
+.info b{font-weight:600}.info span{color:var(--muted);font-size:13px}.info em{font-style:normal;font-weight:600;margin-top:2px}
+button{font:inherit;cursor:pointer;border:0;color:inherit}
+.add{background:var(--accent);color:var(--on);border-radius:999px;padding:8px 18px;font-weight:600}
+.step{display:flex;align-items:center;gap:4px;background:var(--bg);border-radius:999px;padding:3px}
+.step button{width:32px;height:32px;border-radius:50%;background:var(--card);font-size:18px;line-height:1}
+.step span{min-width:22px;text-align:center;font-weight:600}
+#bar{position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,var(--bg) 35%);display:flex;justify-content:center}
+#bar button{width:100%;max-width:484px;background:var(--accent);color:var(--on);border-radius:16px;padding:16px 20px;font-weight:600;display:flex;justify-content:space-between;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+#ov,#sc{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+#ov[hidden],#bar[hidden],#sc[hidden]{display:none}
+.sheet{background:var(--bg);width:100%;max-width:520px;max-height:92%;overflow:auto;border-radius:24px 24px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom,0px))}
+.sheet h2{margin:0 0 14px;font-size:20px;display:flex;justify-content:space-between;align-items:center}
+.x{background:var(--card);width:32px;height:32px;border-radius:50%;font-size:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
+.row{display:flex;justify-content:space-between;padding:3px 0}
+.row.t{border-top:1px solid var(--line);margin-top:8px;padding-top:10px;font-weight:700;font-size:18px}
+label.l{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
+input{width:100%;font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button{flex:1;padding:10px 4px;border-radius:12px;background:var(--bg);font-weight:600;font-size:14px}
+.tabs button.on{background:var(--accent);color:var(--on)}
+.pay p{margin:0 0 10px}.pay img{width:180px;max-width:100%;border-radius:12px;display:block;margin:0 auto 10px;background:#fff}
+.btn{display:block;width:100%;text-align:center;text-decoration:none;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;font-weight:600;margin-bottom:8px}
+.btn.p{background:var(--ok);color:#fff;border-color:transparent}
+.hint{color:var(--muted);font-size:13px;margin:4px 0 10px}
+.msg{white-space:pre-wrap;font-size:14px;color:var(--muted);margin-bottom:10px}
+.scan{width:100%;padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--line);font-weight:600;margin:-8px 0 18px}
+#vid{width:100%;border-radius:14px;background:#000;aspect-ratio:4/3;object-fit:cover;margin-bottom:10px}
+.manrow{display:flex;gap:8px;align-items:flex-start}.manrow input{margin:0}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 8px}
+</style>
+</head>
+<body>
+<main>
+  <h1 id="name"></h1>
+  <p class="sub" id="tag"></p>
+  <button class="scan" data-a="scan">▦ Scan an item’s barcode</button>
+  <div id="list"></div>
+</main>
+<div id="bar" hidden><button id="open"><span id="bc"></span><span id="bt"></span></button></div>
+<div id="ov" hidden><div class="sheet" id="sheet"></div></div>
+<div id="sc" hidden><div class="sheet">
+  <h2>Scan barcode <button class="x" data-a="scx">✕</button></h2>
+  <video id="vid" playsinline muted></video>
+  <p class="hint" id="st"></p>
+  <label class="l" for="man">Or type the barcode number</label>
+  <div class="manrow"><input id="man" inputmode="numeric" placeholder="e.g. 4897878000012"><button class="add" data-a="manadd">Add</button></div>
+</div></div>
+
+<script>
+/* ========= EDIT THIS PART ========= */
+const CONFIG = {
+  shopName: "Room 321",
+  tagline: "Honesty-based. Order, pay, then ping me.",
+  currency: "HK$",
+  whatsapp: "85261683325",   // your number, country code + digits, no + or spaces
+  payments: [
+    { id: "alipay",  label: "Alipay",  detail: "Phone: 6168 3325 (WONG, Pak Yin)", link: "", qr: "" },
+    { id: "payme",   label: "PayMe",   detail: "PayMe ID: K8548250144<br>Phone: 6168 3325 (WONG, Pak Yin)", link: "https://payme.hsbc/d0fae5ad9fba4a448951d22dbe5a9311", qr: "" },
+    { id: "octopus", label: "Octopus", detail: "Phone: 6168 3325 (WONG, Pak Yin)", link: "", qr: "" },
+    { id: "cash",    label: "Cash",    detail: "Pay cash to me in person. Exact change helps!", link: "", qr: "", cash: true }
+  ]
+};
+const ITEMS = [
+  { id: "noodle", emoji: "🍜", name: "Nissin Cup Noodles", desc: "Seafood Flavour", price: 12, code: "4897878100057" },
+  { id: "demae",  emoji: "🍲", name: "Nissin Demae Ramen", desc: "Instant noodles", price: 7.5, code: "4897878000012" },
+  { id: "water",  emoji: "💧", name: "Distilled Water", desc: "700 mL", price: 9, code: "4891028165040" },
+  
+  { id: "stay",   emoji: "🛏️", name: "Overnight stay", desc: "Check in 9pm, out by 11am", price: 100, unit: "night" }
+];
+/* ========= END EDIT ========= */
+
+const cart = {}; let method = CONFIG.payments[0].id, ref = "", who = "";
+try { who = localStorage.getItem("shopName") || ""; } catch (e) {}
+const $ = s => document.querySelector(s);
+const money = n => CONFIG.currency + (Number.isInteger(n) ? n : n.toFixed(1));
+const count = () => Object.values(cart).reduce((a, b) => a + b, 0);
+const total = () => ITEMS.reduce((s, i) => s + (cart[i.id] || 0) * i.price, 0);
+const lines = () => ITEMS.filter(i => cart[i.id]);
+
+$("#name").textContent = CONFIG.shopName;
+$("#tag").textContent = CONFIG.tagline;
+document.title = CONFIG.shopName;
+
+function renderList() {
+  $("#list").innerHTML = ITEMS.map(i => {
+    const q = cart[i.id] || 0;
+    const ctl = q
+      ? `<div class="step"><button data-a="sub" data-id="${i.id}">−</button><span>${q}</span><button data-a="add" data-id="${i.id}">+</button></div>`
+      : `<button class="add" data-a="add" data-id="${i.id}">Add</button>`;
+    return `<div class="item"><div class="emoji">${i.emoji}</div><div class="info"><b>${i.name}</b><span>${i.desc}</span><em>${money(i.price)}${i.unit ? " / " + i.unit : ""}</em></div>${ctl}</div>`;
+  }).join("");
+  const n = count();
+  $("#bar").hidden = !n;
+  $("#bc").textContent = `View order · ${n} item${n > 1 ? "s" : ""}`;
+  $("#bt").textContent = money(total());
+}
+
+function message() {
+  const p = CONFIG.payments.find(x => x.id === method);
+  return `New order ${ref}${who ? " from " + who : ""}\n` +
+    lines().map(i => `• ${cart[i.id]}× ${i.name} (${money(cart[i.id] * i.price)})`).join("\n") +
+    `\nTotal: ${money(total())}\n${p.cash ? "Will pay cash" : "Paid via " + p.label}`;
+}
+
+function renderSheet() {
+  if (!count()) { $("#ov").hidden = true; return; }
+  const p = CONFIG.payments.find(x => x.id === method);
+  $("#sheet").innerHTML = `
+    <h2>Your order <button class="x" data-a="close">✕</button></h2>
+    <div class="card">${lines().map(i => `<div class="row"><span>${cart[i.id]}× ${i.name}</span><span>${money(cart[i.id] * i.price)}</span></div>`).join("")}
+      <div class="row t"><span>Total</span><span>${money(total())}</span></div></div>
+    <label class="l" for="who">Your name (so I know who it is)</label>
+    <input id="who" value="${who.replace(/"/g, "&quot;")}" placeholder="e.g. Alex" autocomplete="name">
+    <h3>1 · Pay</h3>
+    <div class="tabs">${CONFIG.payments.map(x => `<button data-a="m" data-id="${x.id}" class="${x.id === method ? "on" : ""}">${x.label}</button>`).join("")}</div>
+    <div class="card pay">
+      ${p.qr ? `<img src="${p.qr}" alt="${p.label} QR">` : ""}
+      <p>${p.detail}</p>
+      <p><b>Amount: ${money(total())}</b></p>
+      ${p.link ? `<a class="btn" href="${p.link}" target="_blank" rel="noopener">Open ${p.label}</a>` : ""}
+      ${p.cash ? "" : '<button class="btn" data-a="copyamt">Copy amount</button>'}
+    </div>
+    <h3>2 · Let me know</h3>
+    <p class="hint">After paying, tap below to send me this message:</p>
+    <div class="card msg" id="msg"></div>
+    <a class="btn p" id="wa" target="_blank" rel="noopener">${p.cash ? "Notify me via WhatsApp" : "I’ve paid, notify via WhatsApp"}</a>
+    <a class="btn" id="sms">Or send by SMS</a>
+    <button class="btn" data-a="copymsg">Copy message</button>`;
+  links();
+}
+
+function links() {
+  const m = encodeURIComponent(message());
+  const wa = $("#wa"), sms = $("#sms"), mg = $("#msg");
+  if (mg) mg.textContent = message();
+  if (wa) wa.href = `https://wa.me/${CONFIG.whatsapp}?text=${m}`;
+  if (sms) sms.href = `sms:+${CONFIG.whatsapp}?body=${m}`;
+}
+
+async function copy(t, btn) {
+  try { await navigator.clipboard.writeText(t); btn.textContent = "Copied ✓"; }
+  catch (e) { btn.textContent = "Copy failed, select manually"; }
+  setTimeout(renderSheet, 1200);
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-a]"); if (!b) return;
+  const a = b.dataset.a, id = b.dataset.id;
+  if (a === "add") { cart[id] = (cart[id] || 0) + 1; renderList(); if (!$("#ov").hidden) renderSheet(); }
+  else if (a === "sub") { cart[id] = Math.max(0, (cart[id] || 0) - 1); renderList(); if (!$("#ov").hidden) renderSheet(); }
+  else if (a === "m") { method = id; renderSheet(); }
+  else if (a === "close") $("#ov").hidden = true;
+  else if (a === "scan") startScan();
+  else if (a === "scx") stopScan();
+  else if (a === "manadd") { handleCode($("#man").value, true); $("#man").value = ""; }
+  else if (a === "copyamt") copy(String(total()), b);
+  else if (a === "copymsg") copy(message(), b);
+});
+let reader = null, last = "", lastT = 0;
+function say(t) { $("#st").textContent = t; }
+function handleCode(raw, manual) {
+  const c = String(raw).replace(/\D/g, ""); if (!c) return;
+  const now = Date.now();
+  if (!manual && c === last && now - lastT < 2500) return;
+  last = c; lastT = now;
+  const it = ITEMS.find(i => i.code === c);
+  if (it) { cart[it.id] = (cart[it.id] || 0) + 1; renderList(); say("✓ Added " + it.name + " (×" + cart[it.id] + "). Scan another, or close."); }
+  else say("Barcode not recognised: " + c);
+}
+async function startScan() {
+  $("#sc").hidden = false; say("Starting camera…");
+  try {
+    if (!window.ZXing) throw new Error("no scanner");
+    reader = new ZXing.BrowserMultiFormatReader();
+    await reader.decodeFromConstraints({ video: { facingMode: "environment" } }, $("#vid"), r => { if (r) handleCode(r.getText()); });
+    say("Point the camera at the barcode. Each scan adds 1.");
+  } catch (e) { say("Camera isn’t available here. Type the barcode number below instead."); }
+}
+function stopScan() { try { reader && reader.reset(); } catch (e) {} reader = null; $("#sc").hidden = true; }
+$("#open").onclick = () => {
+  ref = "#" + Math.random().toString(36).slice(2, 6).toUpperCase();
+  $("#ov").hidden = false; renderSheet();
+};
+$("#ov").addEventListener("click", e => { if (e.target.id === "ov") $("#ov").hidden = true; });
+document.addEventListener("input", e => {
+  if (e.target.id === "who") { who = e.target.value.trim(); try { localStorage.setItem("shopName", who); } catch (x) {} links(); }
+});
+renderList();
+</script>
+</body>
+</html>
