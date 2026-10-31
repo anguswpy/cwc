@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Photo Booth</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shrikhand&family=Space+Mono:wght@400;700&display=swap">
+<style>
+:root{--wood:#3a2418;--wood2:#2a1910;--cream:#f4e6c8;--ink:#2b1a12;--red:#d63c2b;--teal:#1f8f86;--gold:#f2b134;--panel:#efdcb4;--line:#2b1a12;
+ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--wood:#1d110b;--wood2:#120a06;--panel:#d9c394}}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100vh;color:var(--ink);font:14px/1.4 "Space Mono",ui-monospace,monospace;
+ background:repeating-linear-gradient(90deg,var(--wood) 0 38px,var(--wood2) 38px 40px);-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+header{text-align:center;padding:18px 12px 8px}
+.sign{display:inline-block;position:relative;background:var(--red);color:var(--cream);border:4px solid var(--gold);border-radius:14px;padding:10px 38px 8px;box-shadow:0 6px 0 #7d1d12,0 14px 24px #0008}
+.sign h1{margin:0;font:400 clamp(28px,6vw,52px)/1 Shrikhand,"Brush Script MT",cursive;text-shadow:3px 3px 0 #7d1d12;letter-spacing:.02em}
+.sign small{display:block;letter-spacing:.2em;font-size:11px}
+.bulbs{position:absolute;inset:-9px;display:flex;justify-content:space-between;pointer-events:none}
+.bulbs i{width:9px;height:9px;border-radius:50%;background:#ffe9a6;box-shadow:0 0 10px 3px #ffc94a;animation:bulb 1.2s steps(1) infinite}
+.bulbs i:nth-child(odd){animation-delay:.6s}
+@keyframes bulb{50%{background:#7a5a1c;box-shadow:none}}
+main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;max-width:1120px;margin:14px auto 40px;padding:0 16px}
+@media(max-width:860px){main{grid-template-columns:1fr}}
+.stage,.panel{background:var(--panel);border:4px solid var(--line);border-radius:18px;box-shadow:8px 8px 0 #000a;padding:16px}
+.stage{display:flex;flex-direction:column;align-items:center;gap:14px;min-height:480px}
+.finder{--r:.7;position:relative;width:min(100%,calc(62vh*var(--r)));aspect-ratio:var(--r);background:#000;border:10px solid var(--ink);border-radius:26px;overflow:hidden;box-shadow:inset 0 0 0 3px var(--gold),0 0 0 4px var(--gold)}
+.finder video{width:100%;height:100%;object-fit:cover;display:block}
+.finder.mirror video{transform:scaleX(-1)}
+#count{position:absolute;inset:0;display:grid;place-items:center;font:400 min(38vw,220px)/1 Shrikhand,cursive;color:var(--cream);text-shadow:6px 6px 0 var(--red);pointer-events:none;opacity:0}
+#count.pop{animation:pop 1s ease-out}
+@keyframes pop{0%{transform:scale(2.4) rotate(-8deg);opacity:0}25%{transform:scale(1) rotate(0);opacity:1}100%{transform:scale(.7);opacity:0}}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#flash.go{animation:flash .45s ease-out}
+@keyframes flash{0%{opacity:1}100%{opacity:0}}
+#rec{position:absolute;top:10px;left:12px;color:#fff;background:#d00;padding:2px 8px;border-radius:99px;font-weight:700;font-size:12px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:.35}}
+#msg{position:absolute;inset:0;display:grid;place-content:center;gap:12px;text-align:center;color:var(--cream);background:#000c;padding:20px}
+.tray{display:flex;gap:8px;min-height:62px}
+.tray canvas{height:62px;border:3px solid var(--ink);background:#fff;padding:2px;animation:drop .5s cubic-bezier(.3,1.6,.5,1);transform:rotate(var(--t,0deg))}
+@keyframes drop{from{transform:translateY(-140px) scale(1.6) rotate(12deg);opacity:0}}
+.row{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
+button,.btn{font:700 13px "Space Mono",monospace;color:var(--ink);background:var(--cream);border:3px solid var(--ink);border-radius:10px;padding:9px 13px;min-height:44px;cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .08s,box-shadow .08s;touch-action:manipulation}
+button:active:not(:disabled){transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+button.primary{background:var(--teal);color:#fff}
+.shutter{width:84px;height:84px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff7a62,var(--red) 60%,#8c2012);border:6px solid var(--ink);box-shadow:0 0 0 4px var(--gold),0 7px 0 4px var(--ink);padding:0}
+.shutter:active:not(:disabled){transform:translateY(7px);box-shadow:0 0 0 4px var(--gold),0 0 0 4px var(--ink)}
+.shutter.busy{animation:pulse .8s infinite}
+@keyframes pulse{50%{filter:brightness(1.4)}}
+.slot{width:min(100%,420px);padding-top:16px;background:linear-gradient(var(--ink) 0 14px,transparent 14px);border-radius:8px;overflow:hidden;display:flex;justify-content:center}
+.out{animation:eject 1.3s cubic-bezier(.22,.9,.3,1.04) both;transform-origin:top}
+@keyframes eject{0%{transform:translateY(-102%)}70%{transform:translateY(2%) rotate(.6deg)}100%{transform:none}}
+#strip{display:block;max-width:100%;max-height:68vh;width:auto;height:auto;box-shadow:0 8px 20px #0006;touch-action:none;cursor:grab;background:#fff}
+.panel{display:flex;flex-direction:column;gap:16px;align-self:start}
+.panel h2{margin:0 0 7px;font:400 18px Shrikhand,cursive;color:var(--red)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;padding:7px 6px;min-width:60px}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--cream);box-shadow:0 4px 0 var(--red)}
+.sw{display:flex;gap:8px;flex-wrap:wrap}
+.sw button{width:44px;height:44px;border-radius:50%;padding:0;border-width:3px}
+.sw button[aria-pressed=true]{outline:3px solid var(--gold);outline-offset:2px}
+.stk{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.stk button{font-size:22px;padding:2px;min-height:44px}
+label.f{display:flex;gap:8px;align-items:center;font-weight:700}
+input[type=text]{width:100%;font:inherit;padding:10px;border:3px solid var(--ink);border-radius:10px;background:var(--cream)}
+input[type=color]{width:44px;height:44px;border:3px solid var(--ink);border-radius:10px;padding:0;background:none}
+.dis{opacity:.45;pointer-events:none}
+video#replay{width:100%;max-width:420px;border:3px solid var(--ink);border-radius:10px}
+#printSheet{display:none}
+@media print{@page{margin:0}body>*:not(#printSheet){display:none!important}#printSheet{display:block}#printSheet img{width:100%;height:100%;display:block}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important}}
+</style>
+</head>
+<body>
+<header><div class="sign"><div class="bulbs" id="bulbs"></div><h1>Photo Booth</h1><small>Strike a pose, get a strip</small></div></header>
+<main>
+<section class="stage" aria-live="polite">
+ <div id="booth" style="display:contents">
+  <div class="finder mirror" id="finder"><video id="cam" playsinline muted autoplay></video><div id="count"></div><div id="flash"></div><div id="rec" hidden>● REC</div>
+   <div id="msg"><p id="msgText">Camera is off.</p><button class="primary" id="start">Turn on camera</button></div></div>
+  <div class="tray" id="tray"></div>
+  <div class="row"><button id="switch" hidden>⟲ Switch camera</button><button class="shutter" id="shutter" aria-label="Take photos" disabled></button><button id="mirror" aria-pressed="true">Mirror: on</button></div>
+ </div>
+ <div id="develop" hidden style="display:flex;flex-direction:column;align-items:center;gap:14px;width:100%">
+  <div class="slot"><div class="out" id="out"><canvas id="strip" aria-label="Photo strip preview"></canvas></div></div>
+  <div class="row"><button class="primary" id="dl">Download PNG</button><button id="print">Print</button><button id="dlv" hidden>Download video</button><button id="retake">Retake</button></div>
+  <video id="replay" controls playsinline hidden></video>
+ </div>
+</section>
+<aside class="panel">
+ <div><h2>Layout</h2><div class="seg" data-key="layout"><button data-v="single">Single 4×6</button><button data-v="strip">3 strip</button><button data-v="grid">4 grid</button></div></div>
+ <div><h2>Timer</h2><div class="seg" data-key="timer" data-num><button data-v="0">None</button><button data-v="3">3s</button><button data-v="5">5s</button><button data-v="10">10s</button></div></div>
+ <div><h2>Film</h2><div class="seg" data-key="filter"><button data-v="none">Color</button><button data-v="grayscale(1) contrast(1.1)">B&amp;W</button><button data-v="sepia(.9) contrast(1.05)">Sepia</button></div></div>
+ <label class="f"><input type="checkbox" id="rv"> Record a video of the session</label>
+ <div><h2>Theme</h2><div class="sw" id="themes"></div>
+  <div class="row" style="justify-content:flex-start;margin-top:10px"><label class="f">Paper <input type="color" id="bg"></label><label class="f">Ink <input type="color" id="ink"></label></div></div>
+ <div><h2>Footer</h2><input type="text" id="text" maxlength="28" placeholder="Event name"><label class="f" style="margin-top:8px"><input type="checkbox" id="date"> Stamp today’s date</label></div>
+ <div id="stkBox" class="dis"><h2>Stickers</h2><div class="stk" id="stk"></div>
+  <div class="row" style="margin-top:8px"><button id="smaller">Smaller</button><button id="bigger">Bigger</button><button id="del">Remove</button></div>
+  <p style="margin:8px 0 0;font-size:12px">Tap a sticker to add it, then drag it on the strip.</p></div>
+</aside>
+</main>
+<div id="printSheet"></div>
+
+<script>
+"use strict";
+(() => {
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- Config ---------- */
+const LAYOUTS = {
+  single: { w:1200, h:1800, cols:1, rows:1, pad:60, gap:30, foot:230 },
+  strip:  { w:600,  h:1800, cols:1, rows:3, pad:50, gap:30, foot:210 },
+  grid:   { w:1200, h:1800, cols:2, rows:2, pad:50, gap:30, foot:240 },
+};
+const THEMES = {
+  diner:  { bg:"#d63c2b", ink:"#fff1d0", pat:"dots" },
+  cream:  { bg:"#f1e3c4", ink:"#3b2a20", pat:"none" },
+  motel:  { bg:"#1f8f86", ink:"#fff1d0", pat:"stripes" },
+  noir:   { bg:"#1c1c22", ink:"#f2b134", pat:"checker" },
+  gum:    { bg:"#f6a6c4", ink:"#5a2a45", pat:"dots" },
+};
+const STICKERS = ["⭐","❤️","😎","🎀","🌈","🎈","💋","🎩","✨","🌸","🍒","🕶️"];
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+
+/* ---------- State (single source of truth) ---------- */
+const state = { layout:"strip", timer:3, filter:"none", record:false, mirror:true,
+  theme:"diner", bg:null, ink:null, text:"", date:false, stickers:[], sel:-1, shots:[], busy:false };
+const slotsOf = L => {
+  const aw = (L.w - 2*L.pad - (L.cols-1)*L.gap) / L.cols, ah = (L.h - L.pad - L.foot - (L.rows-1)*L.gap) / L.rows, out = [];
+  for (let r=0;r<L.rows;r++) for (let c=0;c<L.cols;c++) out.push({ x:L.pad+c*(aw+L.gap), y:L.pad+r*(ah+L.gap), w:aw, h:ah });
+  return out;
+};
+const palette = () => ({ ...THEMES[state.theme], ...(state.bg && {bg:state.bg}), ...(state.ink && {ink:state.ink}) });
+
+/* ---------- Camera ---------- */
+const Camera = {
+  el: $("#cam"), devices: [], idx: 0,
+  async start(deviceId) {
+    this.stop();
+    const video = { width:{ideal:1920}, height:{ideal:1080}, ...(deviceId ? { deviceId:{exact:deviceId} } : { facingMode:"user" }) };
+    const stream = await navigator.mediaDevices.getUserMedia({ video, audio:false });
+    this.el.srcObject = stream; await this.el.play();
+    this.devices = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "videoinput");
+    const id = stream.getVideoTracks()[0].getSettings().deviceId;
+    this.idx = Math.max(0, this.devices.findIndex(d => d.deviceId === id));
+    state.mirror = stream.getVideoTracks()[0].getSettings().facingMode !== "environment";
+    return this.devices.length;
+  },
+  next() { return this.start(this.devices[(this.idx + 1) % this.devices.length].deviceId); },
+  stop() { this.el.srcObject?.getTracks().forEach(t => t.stop()); },
+  /** Grab a frame, cropped (cover) to the slot aspect, with filter + mirror baked in. */
+  grab(slot) {
+    const v = this.el, ar = slot.w / slot.h, vr = v.videoWidth / v.videoHeight;
+    const sw = vr > ar ? v.videoHeight * ar : v.videoWidth, sh = vr > ar ? v.videoHeight : v.videoWidth / ar;
+    const c = Object.assign(document.createElement("canvas"), { width:Math.round(slot.w), height:Math.round(slot.h) }), g = c.getContext("2d");
+    g.filter = state.filter;
+    if (state.mirror) { g.translate(c.width, 0); g.scale(-1, 1); }
+    g.drawImage(v, (v.videoWidth-sw)/2, (v.videoHeight-sh)/2, sw, sh, 0, 0, c.width, c.height);
+    return c;
+  },
+};
+
+/* ---------- Compositor: pure drawing of the final strip ---------- */
+const Compositor = {
+  render(canvas, { guides = false } = {}) {
+    const L = LAYOUTS[state.layout], P = palette(), g = canvas.getContext("2d");
+    canvas.width = L.w; canvas.height = L.h;
+    g.fillStyle = P.bg; g.fillRect(0, 0, L.w, L.h);
+    this.pattern(g, L, P.pat);
+    slotsOf(L).forEach((s, i) => {
+      g.fillStyle = "#fffaf0"; g.fillRect(s.x-12, s.y-12, s.w+24, s.h+24);
+      const shot = state.shots[i]; if (shot) g.drawImage(shot, s.x, s.y, s.w, s.h);
+    });
+    this.footer(g, L, P);
+    state.stickers.forEach((k, i) => {
+      g.font = `${k.size}px ${EMOJI_FONT}`; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText(k.emoji, k.x, k.y);
+      if (guides && i === state.sel) { g.save(); g.setLineDash([14,10]); g.lineWidth = 5; g.strokeStyle = "#fff"; g.strokeRect(k.x-k.size*.6, k.y-k.size*.6, k.size*1.2, k.size*1.2); g.restore(); }
+    });
+  },
+  pattern(g, L, kind) {
+    g.fillStyle = "rgba(255,255,255,.11)";
+    if (kind === "dots") for (let y=20;y<L.h;y+=48) for (let x=(y/48%2)*24;x<L.w;x+=48) { g.beginPath(); g.arc(x,y,7,0,7); g.fill(); }
+    if (kind === "stripes") for (let x=-L.h;x<L.w;x+=60) { g.save(); g.translate(x,0); g.rotate(-.5); g.fillRect(0,-200,26,L.h*2); g.restore(); }
+    if (kind === "checker") for (let y=0;y<L.h;y+=60) for (let x=0;x<L.w;x+=60) if ((x+y)/60%2 === 0) g.fillRect(x,y,60,60);
+  },
+  footer(g, L, P) {
+    const cy = L.h - L.foot/2, date = state.date ? new Date().toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) : "";
+    g.fillStyle = P.ink; g.textAlign = "center"; g.textBaseline = "middle";
+    const main = state.text.trim() || (date ? "" : "Photo Booth");
+    if (main) { let sz = L.foot * .36; g.font = `${sz}px Shrikhand, "Brush Script MT", cursive`;
+      const maxW = L.w - 2*L.pad; const w = g.measureText(main).width; if (w > maxW) { sz *= maxW / w; g.font = `${sz}px Shrikhand, cursive`; }
+      g.fillText(main, L.w/2, date ? cy - 22 : cy); }
+    if (date) { g.font = `700 ${L.foot*.14}px "Space Mono", monospace`; g.fillText(date, L.w/2, main ? cy + L.foot*.22 : cy); }
+  },
+  toBlob(type = "image/png") {
+    const c = document.createElement("canvas"); this.render(c);
+    return new Promise(r => c.toBlob(r, type)).then(b => ({ blob:b, canvas:c }));
+  },
+};
+
+/* ---------- Recorder ---------- */
+const Recorder = {
+  rec: null, chunks: [], blob: null, mime: "",
+  start(stream) {
+    this.mime = ["video/mp4","video/webm;codecs=vp9","video/webm"].find(t => window.MediaRecorder?.isTypeSupported(t)) || "";
+    if (!window.MediaRecorder) return false;
+    this.chunks = []; this.rec = new MediaRecorder(stream, this.mime ? { mimeType:this.mime } : undefined);
+    this.rec.ondataavailable = e => e.data.size && this.chunks.push(e.data);
+    this.rec.start(250); return true;
+  },
+  stop() {
+    return new Promise(res => { if (!this.rec || this.rec.state === "inactive") return res(null);
+      this.rec.onstop = () => res(this.blob = new Blob(this.chunks, { type:this.mime || "video/webm" })); this.rec.stop(); });
+  },
+};
+
+/* ---------- Printer ---------- */
+const Printer = {
+  async print() {
+    const L = LAYOUTS[state.layout], { canvas } = await Compositor.toBlob();
+    document.getElementById("pageSize")?.remove();
+    const st = Object.assign(document.createElement("style"), { id:"pageSize", textContent:`@page{size:${L.w/300}in ${L.h/300}in;margin:0}` });
+    document.head.append(st);
+    const img = new Image(); img.src = canvas.toDataURL("image/png");
+    await img.decode(); $("#printSheet").replaceChildren(img); window.print();
+  },
+};
+
+/* ---------- Controller / UI ---------- */
+const finder = $("#finder"), strip = $("#strip");
+const download = (blob, name) => { const a = Object.assign(document.createElement("a"), { href:URL.createObjectURL(blob), download:name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
+const retrigger = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
+const showMsg = (text, btn = true) => { $("#msg").hidden = false; $("#msgText").textContent = text; $("#start").hidden = !btn; };
+
+function syncFinder() {
+  const s = slotsOf(LAYOUTS[state.layout])[0];
+  finder.style.setProperty("--r", (s.w / s.h).toFixed(3));
+  finder.classList.toggle("mirror", state.mirror);
+  $("#mirror").setAttribute("aria-pressed", state.mirror); $("#mirror").textContent = `Mirror: ${state.mirror ? "on" : "off"}`;
+  Camera.el.style.filter = state.filter;
+}
+function syncSegs() { $$(".seg").forEach(seg => $$(".seg button", seg) && seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v) === String(state[seg.dataset.key])))); }
+function redraw() { if (!$("#develop").hidden) Compositor.render(strip, { guides:true }); $("#stkBox").classList.toggle("dis", $("#develop").hidden); }
+
+async function startCamera(next = false) {
+  try {
+    showMsg("Waiting for camera permission…", false);
+    const n = next ? (await Camera.next(), Camera.devices.length) : await Camera.start();
+    $("#switch").hidden = n < 2; $("#msg").hidden = true; $("#shutter").disabled = false; syncFinder();
+  } catch (e) {
+    showMsg(e.name === "NotAllowedError" ? "Camera blocked. Allow access in your browser, then try again." : "No usable camera found.");
+  }
+}
+
+async function countdown(sec) {
+  const el = $("#count");
+  for (let n = sec; n > 0; n--) { el.textContent = n; retrigger(el, "pop"); await sleep(1000); }
+}
+function addThumb(c) {
+  const t = c.cloneNode(); t.getContext("2d").drawImage(c, 0, 0); t.style.setProperty("--t", `${(Math.random()*8-4).toFixed(1)}deg`);
+  t.style.width = "auto"; $("#tray").append(t);
+}
+
+async function runSession() {
+  if (state.busy) return; state.busy = true; state.shots = []; $("#tray").replaceChildren();
+  const L = LAYOUTS[state.layout], slots = slotsOf(L); $("#shutter").classList.add("busy");
+  const recording = state.record && Recorder.start(Camera.el.srcObject); $("#rec").hidden = !recording;
+  for (const s of slots) {
+    await countdown(state.timer);
+    retrigger($("#flash"), "go"); state.shots.push(Camera.grab(s)); addThumb(state.shots.at(-1));
+    await sleep(state.timer ? 900 : 1100);
+  }
+  const vid = recording ? await Recorder.stop() : null; $("#rec").hidden = true;
+  $("#shutter").classList.remove("busy"); state.busy = false;
+  develop(vid);
+}
+
+function develop(vid) {
+  state.stickers = []; state.sel = -1;
+  $("#booth").hidden = true; $("#develop").hidden = false;
+  $("#replay").hidden = $("#dlv").hidden = !vid;
+  if (vid) $("#replay").src = URL.createObjectURL(vid);
+  redraw(); retrigger($("#out"), "out");
+  $("#out").style.animation = "none"; void $("#out").offsetWidth; $("#out").style.animation = "";
+}
+function retake() { $("#develop").hidden = true; $("#booth").hidden = false; $("#tray").replaceChildren(); $("#replay").removeAttribute("src"); redraw(); }
+
+/* ---------- Sticker interaction (pointer events: mouse + touch + pen) ---------- */
+let drag = null;
+const toCanvas = e => { const r = strip.getBoundingClientRect(); return { x:(e.clientX-r.left)*strip.width/r.width, y:(e.clientY-r.top)*strip.height/r.height }; };
+strip.addEventListener("pointerdown", e => {
+  const p = toCanvas(e); let hit = -1;
+  for (let i = state.stickers.length-1; i >= 0; i--) { const k = state.stickers[i]; if (Math.hypot(p.x-k.x, p.y-k.y) < k.size*.6) { hit = i; break; } }
+  state.sel = hit; if (hit >= 0) { const k = state.stickers[hit]; drag = { dx:k.x-p.x, dy:k.y-p.y }; strip.setPointerCapture(e.pointerId); strip.style.cursor = "grabbing"; }
+  redraw();
+});
+strip.addEventListener("pointermove", e => { if (!drag) return; const p = toCanvas(e), k = state.stickers[state.sel]; k.x = p.x+drag.dx; k.y = p.y+drag.dy; redraw(); });
+const endDrag = () => { drag = null; strip.style.cursor = "grab"; };
+strip.addEventListener("pointerup", endDrag); strip.addEventListener("pointercancel", endDrag);
+const resize = f => { const k = state.stickers[state.sel]; if (k) { k.size = Math.max(60, Math.min(600, k.size*f)); redraw(); } };
+const remove = () => { if (state.sel >= 0) { state.stickers.splice(state.sel, 1); state.sel = -1; redraw(); } };
+
+/* ---------- Wire up ---------- */
+$$(".seg").forEach(seg => seg.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || state.busy) return;
+  const key = seg.dataset.key; if (key === "layout" && !$("#develop").hidden) retake();
+  state[key] = "num" in seg.dataset ? +b.dataset.v : b.dataset.v; syncSegs(); syncFinder();
+}));
+$("#themes").append(...Object.entries(THEMES).map(([id, t]) => Object.assign(document.createElement("button"), { title:id, ariaLabel:`${id} theme`, style:`background:linear-gradient(135deg,${t.bg} 55%,${t.ink} 55%)`,
+  onclick() { state.theme = id; state.bg = state.ink = null; syncTheme(); redraw(); } })));
+function syncTheme() { const P = palette(); $("#bg").value = P.bg; $("#ink").value = P.ink; [...$("#themes").children].forEach((b, i) => b.setAttribute("aria-pressed", Object.keys(THEMES)[i] === state.theme && !state.bg && !state.ink)); }
+$("#bg").oninput = e => { state.bg = e.target.value; syncTheme(); redraw(); };
+$("#ink").oninput = e => { state.ink = e.target.value; syncTheme(); redraw(); };
+$("#text").oninput = e => { state.text = e.target.value; redraw(); };
+$("#date").onchange = e => { state.date = e.target.checked; redraw(); };
+$("#rv").onchange = e => state.record = e.target.checked;
+$("#stk").append(...STICKERS.map(emoji => Object.assign(document.createElement("button"), { textContent:emoji, ariaLabel:`Add ${emoji}`,
+  onclick() { const L = LAYOUTS[state.layout]; state.stickers.push({ emoji, size:L.w*.22, x:L.w/2+(Math.random()-.5)*L.w*.4, y:L.h/2+(Math.random()-.5)*L.h*.4 }); state.sel = state.stickers.length-1; redraw(); } })));
+$("#smaller").onclick = () => resize(.85); $("#bigger").onclick = () => resize(1.18); $("#del").onclick = remove;
+addEventListener("keydown", e => { if ((e.key === "Delete" || e.key === "Backspace") && !/INPUT/.test(document.activeElement.tagName)) remove(); if (e.code === "Space" && !$("#booth").hidden && !/INPUT|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); runSession(); } });
+$("#start").onclick = () => startCamera(); $("#switch").onclick = () => startCamera(true);
+$("#mirror").onclick = () => { state.mirror = !state.mirror; syncFinder(); };
+$("#shutter").onclick = runSession; $("#retake").onclick = retake;
+$("#dl").onclick = async () => download((await Compositor.toBlob()).blob, `photobooth-${Date.now()}.png`);
+$("#dlv").onclick = () => download(Recorder.blob, `photobooth-${Date.now()}.${Recorder.mime.includes("mp4") ? "mp4" : "webm"}`);
+$("#print").onclick = () => Printer.print();
+
+$("#bulbs").innerHTML = "<i></i>".repeat(18);
+syncSegs(); syncTheme(); syncFinder();
+document.fonts?.ready.then(redraw);
+if (navigator.mediaDevices?.getUserMedia) startCamera(); else showMsg("This browser has no camera support.", false);
+})();
+</script>
+</body>
+</html>
