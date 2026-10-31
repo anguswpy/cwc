@@ -26,7 +26,7 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;max-width:1
 .stage,.panel{background:var(--panel);border:4px solid var(--line);border-radius:18px;box-shadow:8px 8px 0 #000a;padding:16px}
 .stage{display:flex;flex-direction:column;align-items:center;gap:14px;min-height:480px}
 .finder{--r:.7;position:relative;width:min(100%,calc(62vh*var(--r)));aspect-ratio:var(--r);background:#000;border:10px solid var(--ink);border-radius:26px;overflow:hidden;box-shadow:inset 0 0 0 3px var(--gold),0 0 0 4px var(--gold)}
-.finder video{width:100%;height:100%;object-fit:cover;display:block}
+.finder video{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none}#view{width:100%;height:100%;display:block}#live{height:min(210px,26vh);width:auto;border:3px solid var(--ink);background:#fff;box-shadow:4px 4px 0 #0005;border-radius:3px}
 .finder.mirror video{transform:scaleX(-1)}
 #count{position:absolute;inset:0;display:grid;place-items:center;font:400 min(38vw,220px)/1 Shrikhand,cursive;color:var(--cream);text-shadow:6px 6px 0 var(--red);pointer-events:none;opacity:0}
 #count.pop{animation:pop 1s ease-out}
@@ -79,28 +79,27 @@ video#replay{width:100%;max-width:420px;border:3px solid var(--ink);border-radiu
 <main>
 <section class="stage" aria-live="polite">
  <div id="booth" style="display:contents">
-  <div class="finder mirror" id="finder"><video id="cam" playsinline muted autoplay></video><div id="count"></div><div id="flash"></div><div id="rec" hidden>● REC</div>
+  <div class="finder mirror" id="finder"><video id="cam" playsinline muted autoplay></video><canvas id="view"></canvas><div id="rec" hidden>● REC</div>
    <div id="msg"><p id="msgText">Camera is off.</p><button class="primary" id="start">Turn on camera</button></div></div>
-  <div class="tray" id="tray"></div>
+  <canvas id="live" aria-label="Live strip preview"></canvas>
   <div class="row"><button id="switch" hidden>⟲ Switch camera</button><button class="shutter" id="shutter" aria-label="Take photos" disabled></button><button id="mirror" aria-pressed="true">Mirror: on</button></div>
  </div>
  <div id="develop" hidden style="display:flex;flex-direction:column;align-items:center;gap:14px;width:100%">
   <div class="slot"><div class="out" id="out"><canvas id="strip" aria-label="Photo strip preview"></canvas></div></div>
-  <div class="row"><button class="primary" id="dl">Download PNG</button><button id="print">Print</button><button id="dlv" hidden>Download video</button><button id="retake">Retake</button></div>
+  <div class="row"><button class="primary" id="dl">Download PNG</button><button id="raw">Raw photos</button><button id="print">Print</button><button id="dlv" hidden>Download video</button><button id="retake">Retake</button></div>
   <video id="replay" controls playsinline hidden></video>
  </div>
 </section>
 <aside class="panel">
  <div><h2>Layout</h2><div class="seg" data-key="layout"><button data-v="single">Single 4×6</button><button data-v="strip">3 strip</button><button data-v="grid">4 grid</button></div></div>
  <div><h2>Timer</h2><div class="seg" data-key="timer" data-num><button data-v="0">None</button><button data-v="3">3s</button><button data-v="5">5s</button><button data-v="10">10s</button></div></div>
- <div><h2>Film</h2><div class="seg" data-key="filter"><button data-v="none">Color</button><button data-v="grayscale(1) contrast(1.1)">B&amp;W</button><button data-v="sepia(.9) contrast(1.05)">Sepia</button></div></div>
+ <div><h2>Film</h2><div class="seg" data-key="film" id="films"></div></div>
  <label class="f"><input type="checkbox" id="rv"> Record a video of the session</label>
  <div><h2>Theme</h2><div class="sw" id="themes"></div>
   <div class="row" style="justify-content:flex-start;margin-top:10px"><label class="f">Paper <input type="color" id="bg"></label><label class="f">Ink <input type="color" id="ink"></label></div></div>
- <div><h2>Footer</h2><input type="text" id="text" maxlength="28" placeholder="Event name"><label class="f" style="margin-top:8px"><input type="checkbox" id="date"> Stamp today’s date</label></div>
+ <div><h2>Footer</h2><input type="text" id="text" maxlength="28" placeholder="Event name"><h2 style="margin:12px 0 7px">Date stamp</h2><div class="seg" data-key="dstyle"><button data-v="off">None</button><button data-v="footer">Footer</button><button data-v="film">Film</button><button data-v="stamp">Rubber</button></div></div>
  <div id="stkBox" class="dis"><h2>Stickers</h2><div class="stk" id="stk"></div>
-  <div class="row" style="margin-top:8px"><button id="smaller">Smaller</button><button id="bigger">Bigger</button><button id="del">Remove</button></div>
-  <p style="margin:8px 0 0;font-size:12px">Tap a sticker to add it, then drag it on the strip.</p></div>
+  <div class="row" style="margin-top:8px"><button id="del">Remove selected</button></div><p style="margin:8px 0 0;font-size:12px">Tap to add. Drag to move, pull the corner dot to resize and rotate, × deletes. Pinch or scroll works too.</p></div>
 </aside>
 </main>
 <div id="printSheet"></div>
@@ -110,6 +109,7 @@ video#replay{width:100%;max-width:420px;border:3px solid var(--ink);border-radiu
 (() => {
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /* ---------- Config ---------- */
 const LAYOUTS = {
@@ -118,26 +118,85 @@ const LAYOUTS = {
   grid:   { w:1200, h:1800, cols:2, rows:2, pad:50, gap:30, foot:240 },
 };
 const THEMES = {
-  diner:  { bg:"#d63c2b", ink:"#fff1d0", pat:"dots" },
-  cream:  { bg:"#f1e3c4", ink:"#3b2a20", pat:"none" },
-  motel:  { bg:"#1f8f86", ink:"#fff1d0", pat:"stripes" },
-  noir:   { bg:"#1c1c22", ink:"#f2b134", pat:"checker" },
-  gum:    { bg:"#f6a6c4", ink:"#5a2a45", pat:"dots" },
+  diner:{bg:"#d63c2b",ink:"#fff1d0",pat:"dots"}, cream:{bg:"#f1e3c4",ink:"#3b2a20",pat:"none"},
+  motel:{bg:"#1f8f86",ink:"#fff1d0",pat:"stripes"}, noir:{bg:"#1c1c22",ink:"#f2b134",pat:"checker"},
+  gum:{bg:"#f6a6c4",ink:"#5a2a45",pat:"dots"}, sunset:{bg:"#f28c38",ink:"#3a1c4a",pat:"stripes"},
+  mint:{bg:"#8fd6b5",ink:"#1e3a30",pat:"grid"}, midnight:{bg:"#26307a",ink:"#ffe27a",pat:"stars"},
+  pop:{bg:"#ffd23f",ink:"#d63c2b",pat:"checker"},
+};
+/* Film stocks: a per-pixel pipeline (tone curve, split-toning, grain, scanlines, chroma shift) plus bloom / vignette / light leak. */
+const FILMS = {
+  none:{n:"Clean"},
+  kodak:{n:"Gold 400",sat:1.25,con:1.08,sh:[14,4,-6],hi:[14,6,-14],fade:.06,grain:16,vig:.35},
+  noir:{n:"Noir",mono:1,con:1.35,bri:-8,grain:34,vig:.55},
+  polaroid:{n:"Instant",sat:.85,con:.92,sh:[-6,10,14],hi:[18,8,-10],fade:.3,grain:10,vig:.28,leak:"255,140,60"},
+  cross:{n:"Cross",sat:1.4,con:1.25,sh:[-14,22,10],hi:[26,-8,28],grain:14,vig:.3},
+  vhs:{n:"VHS",sat:1.3,con:1.1,sh:[0,0,10],hi:[8,0,0],grain:22,scan:1,shift:5,fade:.1},
+  sepia:{n:"1920s",mono:1,tone:[1.08,.86,.62],con:1.1,fade:.12,grain:24,vig:.6},
+  dream:{n:"Dream",sat:1.1,con:.95,bri:8,fade:.18,bloom:.55,hi:[10,6,14],grain:6,vig:.15},
 };
 const STICKERS = ["⭐","❤️","😎","🎀","🌈","🎈","💋","🎩","✨","🌸","🍒","🕶️"];
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
-/* ---------- State (single source of truth) ---------- */
-const state = { layout:"strip", timer:3, filter:"none", record:false, mirror:true,
-  theme:"diner", bg:null, ink:null, text:"", date:false, stickers:[], sel:-1, shots:[], busy:false };
+/* ---------- State ---------- */
+const state = { layout:"strip", timer:3, film:"none", record:false, mirror:true, theme:"diner", bg:null, ink:null,
+  text:"", dstyle:"off", stickers:[], sel:-1, shots:[], busy:false };
 const slotsOf = L => {
-  const aw = (L.w - 2*L.pad - (L.cols-1)*L.gap) / L.cols, ah = (L.h - L.pad - L.foot - (L.rows-1)*L.gap) / L.rows, out = [];
+  const aw = (L.w-2*L.pad-(L.cols-1)*L.gap)/L.cols, ah = (L.h-L.pad-L.foot-(L.rows-1)*L.gap)/L.rows, out = [];
   for (let r=0;r<L.rows;r++) for (let c=0;c<L.cols;c++) out.push({ x:L.pad+c*(aw+L.gap), y:L.pad+r*(ah+L.gap), w:aw, h:ah });
   return out;
 };
 const palette = () => ({ ...THEMES[state.theme], ...(state.bg && {bg:state.bg}), ...(state.ink && {ink:state.ink}) });
 
-/* ---------- Camera ---------- */
+/** Draw src into (0,0,dw,dh) with object-fit: cover. */
+function cover(g, src, dw, dh, mirror) {
+  const vw = src.videoWidth || src.width, vh = src.videoHeight || src.height, ar = dw/dh, vr = vw/vh;
+  const sw = vr > ar ? vh*ar : vw, sh = vr > ar ? vh : vw/ar;
+  g.save(); if (mirror) { g.translate(dw, 0); g.scale(-1, 1); }
+  g.drawImage(src, (vw-sw)/2, (vh-sh)/2, sw, sh, 0, 0, dw, dh); g.restore();
+}
+
+/* ---------- Film engine (works on every browser; no ctx.filter) ---------- */
+const Film = {
+  cache: new Map(), scratch: document.createElement("canvas"),
+  noise: Int8Array.from({ length:65536 }, () => Math.random()*255-127),
+  process(c, id) {
+    const f = FILMS[id]; if (!f || id === "none") return c;
+    const w = c.width, h = c.height, g = c.getContext("2d"), img = g.getImageData(0,0,w,h), d = img.data;
+    const { sat=1, con=1, bri=0, fade=0, grain=0, sh=[0,0,0], hi=[0,0,0], tone, mono, scan, shift=0 } = f;
+    const off = (Math.random()*65535)|0, lift = fade*64, k = 1-fade*.25;
+    for (let i=0, p=0; i<d.length; i+=4, p++) {
+      const x = p%w, y = (p/w)|0;
+      let r = shift && x >= shift ? d[i-4*shift] : d[i], gg = d[i+1], b = d[i+2];
+      const l = .3*r+.59*gg+.11*b;
+      if (mono) { r = gg = b = l; if (tone) { r*=tone[0]; gg*=tone[1]; b*=tone[2]; } }
+      else if (sat !== 1) { r = l+(r-l)*sat; gg = l+(gg-l)*sat; b = l+(b-l)*sat; }
+      const ls = l/255, ws = (1-ls)*(1-ls), wh = ls*ls;
+      r = ((r-128)*con+128+bri+sh[0]*ws+hi[0]*wh)*k+lift;
+      gg = ((gg-128)*con+128+bri+sh[1]*ws+hi[1]*wh)*k+lift;
+      b = ((b-128)*con+128+bri+sh[2]*ws+hi[2]*wh)*k+lift;
+      if (grain) { const n = this.noise[(x*131+y*977+off)&65535]*grain/200; r+=n; gg+=n; b+=n; }
+      if (scan && (y&2)) { r*=.82; gg*=.82; b*=.82; }
+      d[i]=r; d[i+1]=gg; d[i+2]=b;
+    }
+    g.putImageData(img, 0, 0);
+    if (f.bloom) { const s = this.scratch; s.width = w>>3; s.height = h>>3; s.getContext("2d").drawImage(c,0,0,s.width,s.height);
+      g.save(); g.globalCompositeOperation = "screen"; g.globalAlpha = f.bloom; g.drawImage(s,0,0,w,h); g.restore(); }
+    if (f.leak) { const lg = g.createLinearGradient(0,0,w*.6,h*.25); lg.addColorStop(0,`rgba(${f.leak},.6)`); lg.addColorStop(1,`rgba(${f.leak},0)`);
+      g.save(); g.globalCompositeOperation = "screen"; g.fillStyle = lg; g.fillRect(0,0,w,h); g.restore(); }
+    if (f.vig) { const vg = g.createRadialGradient(w/2,h/2,Math.min(w,h)*.3,w/2,h/2,Math.max(w,h)*.75); vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,`rgba(0,0,0,${f.vig})`);
+      g.fillStyle = vg; g.fillRect(0,0,w,h); }
+    return c;
+  },
+  /** Developed (cropped + film-processed) version of raw shot i, cached until the film or layout changes. */
+  shot(i, s) {
+    const key = `${state.film}|${i}|${s.w|0}x${s.h|0}`; let c = this.cache.get(key); if (c) return c;
+    c = Object.assign(document.createElement("canvas"), { width:s.w|0, height:s.h|0 });
+    cover(c.getContext("2d"), state.shots[i], c.width, c.height); this.process(c, state.film); this.cache.set(key, c); return c;
+  },
+};
+
+/* ---------- Camera + live view (canvas, so the video recording gets film + overlays too) ---------- */
 const Camera = {
   el: $("#cam"), devices: [], idx: 0,
   async start(deviceId) {
@@ -146,193 +205,235 @@ const Camera = {
     const stream = await navigator.mediaDevices.getUserMedia({ video, audio:false });
     this.el.srcObject = stream; await this.el.play();
     this.devices = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "videoinput");
-    const id = stream.getVideoTracks()[0].getSettings().deviceId;
-    this.idx = Math.max(0, this.devices.findIndex(d => d.deviceId === id));
-    state.mirror = stream.getVideoTracks()[0].getSettings().facingMode !== "environment";
-    return this.devices.length;
+    const st = stream.getVideoTracks()[0].getSettings();
+    this.idx = Math.max(0, this.devices.findIndex(d => d.deviceId === st.deviceId));
+    state.mirror = st.facingMode !== "environment"; return this.devices.length;
   },
-  next() { return this.start(this.devices[(this.idx + 1) % this.devices.length].deviceId); },
+  next() { return this.start(this.devices[(this.idx+1) % this.devices.length].deviceId); },
   stop() { this.el.srcObject?.getTracks().forEach(t => t.stop()); },
-  /** Grab a frame, cropped (cover) to the slot aspect, with filter + mirror baked in. */
-  grab(slot) {
-    const v = this.el, ar = slot.w / slot.h, vr = v.videoWidth / v.videoHeight;
-    const sw = vr > ar ? v.videoHeight * ar : v.videoWidth, sh = vr > ar ? v.videoHeight : v.videoWidth / ar;
-    const c = Object.assign(document.createElement("canvas"), { width:Math.round(slot.w), height:Math.round(slot.h) }), g = c.getContext("2d");
-    g.filter = state.filter;
-    if (state.mirror) { g.translate(c.width, 0); g.scale(-1, 1); }
-    g.drawImage(v, (v.videoWidth-sw)/2, (v.videoHeight-sh)/2, sw, sh, 0, 0, c.width, c.height);
-    return c;
+  /** Raw full-resolution frame (mirror baked in, no film). */
+  grab() {
+    const v = this.el, c = Object.assign(document.createElement("canvas"), { width:v.videoWidth, height:v.videoHeight });
+    const g = c.getContext("2d"); if (state.mirror) { g.translate(c.width,0); g.scale(-1,1); } g.drawImage(v,0,0); return c;
+  },
+};
+const View = {
+  el: $("#view"), num: 0, numT: 0, flashT: 0,
+  init() { this.g = this.el.getContext("2d", { willReadFrequently:true }); },
+  size(r) { this.el.width = 540; this.el.height = Math.round(540/r); },
+  overlay(g, W, H) {
+    const now = performance.now();
+    if (this.num) {
+      const p = Math.min(1, (now-this.numT)/1000), sc = p < .25 ? 2.4-5.6*p : 1-.3*(p-.25)/.75, a = p < .25 ? p*4 : 1-(p-.25)/.75;
+      g.save(); g.translate(W/2, H/2); g.rotate(p < .25 ? -.14*(1-p*4) : 0); g.scale(sc, sc); g.globalAlpha = Math.max(0, a);
+      g.font = `${W*.5}px Shrikhand, cursive`; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillStyle = "#d63c2b"; g.fillText(this.num, W*.015, W*.015); g.fillStyle = "#f4e6c8"; g.fillText(this.num, 0, 0); g.restore();
+    }
+    const fa = 1-(now-this.flashT)/450; if (fa > 0) { g.fillStyle = `rgba(255,255,255,${fa})`; g.fillRect(0,0,W,H); }
+  },
+  frame() {
+    requestAnimationFrame(() => this.frame());
+    const v = Camera.el; if (!v.videoWidth || ($("#booth").hidden && !Recorder.active)) return;
+    const c = this.el; cover(this.g, v, c.width, c.height, state.mirror);
+    Film.process(c, state.film); this.overlay(this.g, c.width, c.height);
   },
 };
 
-/* ---------- Compositor: pure drawing of the final strip ---------- */
+/* ---------- Compositor ---------- */
 const Compositor = {
   render(canvas, { guides = false } = {}) {
-    const L = LAYOUTS[state.layout], P = palette(), g = canvas.getContext("2d");
+    const L = LAYOUTS[state.layout], P = palette(), g = canvas.getContext("2d"), slots = slotsOf(L);
     canvas.width = L.w; canvas.height = L.h;
-    g.fillStyle = P.bg; g.fillRect(0, 0, L.w, L.h);
-    this.pattern(g, L, P.pat);
-    slotsOf(L).forEach((s, i) => {
+    g.fillStyle = P.bg; g.fillRect(0,0,L.w,L.h); this.pattern(g, L, P.pat);
+    slots.forEach((s, i) => {
       g.fillStyle = "#fffaf0"; g.fillRect(s.x-12, s.y-12, s.w+24, s.h+24);
-      const shot = state.shots[i]; if (shot) g.drawImage(shot, s.x, s.y, s.w, s.h);
+      if (state.shots[i]) g.drawImage(Film.shot(i, s), s.x, s.y); else { g.fillStyle = "#cdbf9f"; g.fillRect(s.x, s.y, s.w, s.h); }
     });
+    this.dateStamp(g, slots);
     this.footer(g, L, P);
-    state.stickers.forEach((k, i) => {
-      g.font = `${k.size}px ${EMOJI_FONT}`; g.textAlign = "center"; g.textBaseline = "middle";
-      g.fillText(k.emoji, k.x, k.y);
-      if (guides && i === state.sel) { g.save(); g.setLineDash([14,10]); g.lineWidth = 5; g.strokeStyle = "#fff"; g.strokeRect(k.x-k.size*.6, k.y-k.size*.6, k.size*1.2, k.size*1.2); g.restore(); }
-    });
+    state.stickers.forEach(k => { g.save(); g.translate(k.x, k.y); g.rotate(k.rot); g.font = `${k.size}px ${EMOJI_FONT}`;
+      g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(k.emoji, 0, 0); g.restore(); });
+    if (guides && state.sel >= 0) this.handles(g, canvas);
   },
   pattern(g, L, kind) {
-    g.fillStyle = "rgba(255,255,255,.11)";
+    g.fillStyle = g.strokeStyle = "rgba(255,255,255,.11)";
     if (kind === "dots") for (let y=20;y<L.h;y+=48) for (let x=(y/48%2)*24;x<L.w;x+=48) { g.beginPath(); g.arc(x,y,7,0,7); g.fill(); }
     if (kind === "stripes") for (let x=-L.h;x<L.w;x+=60) { g.save(); g.translate(x,0); g.rotate(-.5); g.fillRect(0,-200,26,L.h*2); g.restore(); }
     if (kind === "checker") for (let y=0;y<L.h;y+=60) for (let x=0;x<L.w;x+=60) if ((x+y)/60%2 === 0) g.fillRect(x,y,60,60);
+    if (kind === "grid") { g.lineWidth = 3; g.beginPath(); for (let x=0;x<L.w;x+=60) { g.moveTo(x,0); g.lineTo(x,L.h); } for (let y=0;y<L.h;y+=60) { g.moveTo(0,y); g.lineTo(L.w,y); } g.stroke(); }
+    if (kind === "stars") { g.font = "34px serif"; g.textAlign = "center"; g.textBaseline = "middle"; for (let y=30;y<L.h;y+=80) for (let x=(y/80%2)*40+30;x<L.w;x+=80) g.fillText("★",x,y); }
+  },
+  dateStamp(g, slots) {
+    if (state.dstyle !== "film" && state.dstyle !== "stamp") return;
+    const s = slots.at(-1), d = new Date(); g.save();
+    if (state.dstyle === "film") {
+      g.font = `700 ${s.w*.08}px "Space Mono",monospace`; g.textAlign = "right"; g.textBaseline = "bottom";
+      g.shadowColor = "#ff7a00"; g.shadowBlur = 14; g.fillStyle = "#ff9a2e";
+      g.fillText(`'${String(d.getFullYear()).slice(2)} ${d.getMonth()+1} ${d.getDate()}`, s.x+s.w*.95, s.y+s.h-s.w*.04);
+    } else {
+      const t = d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}).toUpperCase(), fs = s.w*.075;
+      g.font = `700 ${fs}px "Space Mono",monospace`; const w = g.measureText(t).width+fs*1.2;
+      g.translate(Math.min(s.x+s.w*.72, s.x+s.w-w/2-10), s.y+s.h-fs*1.6); g.rotate(-.12);
+      g.strokeStyle = g.fillStyle = "rgba(200,35,35,.85)"; g.lineWidth = fs*.14; g.strokeRect(-w/2,-fs*.85,w,fs*1.7);
+      g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(t,0,0);
+    }
+    g.restore();
   },
   footer(g, L, P) {
-    const cy = L.h - L.foot/2, date = state.date ? new Date().toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) : "";
+    const cy = L.h-L.foot/2, date = state.dstyle === "footer" ? new Date().toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}) : "";
     g.fillStyle = P.ink; g.textAlign = "center"; g.textBaseline = "middle";
     const main = state.text.trim() || (date ? "" : "Photo Booth");
-    if (main) { let sz = L.foot * .36; g.font = `${sz}px Shrikhand, "Brush Script MT", cursive`;
-      const maxW = L.w - 2*L.pad; const w = g.measureText(main).width; if (w > maxW) { sz *= maxW / w; g.font = `${sz}px Shrikhand, cursive`; }
-      g.fillText(main, L.w/2, date ? cy - 22 : cy); }
-    if (date) { g.font = `700 ${L.foot*.14}px "Space Mono", monospace`; g.fillText(date, L.w/2, main ? cy + L.foot*.22 : cy); }
+    if (main) { let sz = L.foot*.36; g.font = `${sz}px Shrikhand, "Brush Script MT", cursive`;
+      const maxW = L.w-2*L.pad, w = g.measureText(main).width; if (w > maxW) { sz *= maxW/w; g.font = `${sz}px Shrikhand, cursive`; }
+      g.fillText(main, L.w/2, date ? cy-22 : cy); }
+    if (date) { g.font = `700 ${L.foot*.14}px "Space Mono",monospace`; g.fillText(date, L.w/2, main ? cy+L.foot*.22 : cy); }
   },
-  toBlob(type = "image/png") {
-    const c = document.createElement("canvas"); this.render(c);
-    return new Promise(r => c.toBlob(r, type)).then(b => ({ blob:b, canvas:c }));
+  handleR: c => 22*c.width/(c.getBoundingClientRect().width || c.width),
+  handles(g, c) {
+    const k = state.stickers[state.sel], h = k.size*.6, R = this.handleR(c);
+    g.save(); g.translate(k.x, k.y); g.rotate(k.rot); g.setLineDash([14,10]); g.lineWidth = 4; g.strokeStyle = "#fff"; g.strokeRect(-h,-h,2*h,2*h); g.setLineDash([]);
+    [[h,h,"#fff","#2b1a12","↻"],[-h,-h,"#d63c2b","#fff","×"]].forEach(([x,y,bg,fg,ch]) => {
+      g.beginPath(); g.arc(x,y,R,0,7); g.fillStyle = bg; g.fill(); g.lineWidth = 4; g.strokeStyle = "#2b1a12"; g.stroke();
+      g.fillStyle = fg; g.font = `700 ${R*1.3}px sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(ch,x,y+R*.05); });
+    g.restore();
   },
+  toBlob() { const c = document.createElement("canvas"); this.render(c); return new Promise(r => c.toBlob(r, "image/png")).then(blob => ({ blob, canvas:c })); },
 };
 
-/* ---------- Recorder ---------- */
+/* ---------- Recorder (records the composited live canvas: film + countdown + flash) ---------- */
 const Recorder = {
   rec: null, chunks: [], blob: null, mime: "",
+  get active() { return this.rec?.state === "recording"; },
   start(stream) {
-    this.mime = ["video/mp4","video/webm;codecs=vp9","video/webm"].find(t => window.MediaRecorder?.isTypeSupported(t)) || "";
     if (!window.MediaRecorder) return false;
-    this.chunks = []; this.rec = new MediaRecorder(stream, this.mime ? { mimeType:this.mime } : undefined);
-    this.rec.ondataavailable = e => e.data.size && this.chunks.push(e.data);
-    this.rec.start(250); return true;
+    this.mime = ["video/mp4","video/webm;codecs=vp9","video/webm"].find(t => MediaRecorder.isTypeSupported(t)) || "";
+    this.chunks = []; this.rec = new MediaRecorder(stream, this.mime ? { mimeType:this.mime, videoBitsPerSecond:4e6 } : undefined);
+    this.rec.ondataavailable = e => e.data.size && this.chunks.push(e.data); this.rec.start(250); return true;
   },
-  stop() {
-    return new Promise(res => { if (!this.rec || this.rec.state === "inactive") return res(null);
-      this.rec.onstop = () => res(this.blob = new Blob(this.chunks, { type:this.mime || "video/webm" })); this.rec.stop(); });
-  },
+  stop() { return new Promise(res => { if (!this.rec || this.rec.state === "inactive") return res(null);
+    this.rec.onstop = () => res(this.blob = new Blob(this.chunks, { type:this.mime || "video/webm" })); this.rec.stop(); }); },
 };
 
-/* ---------- Printer ---------- */
 const Printer = {
   async print() {
     const L = LAYOUTS[state.layout], { canvas } = await Compositor.toBlob();
     document.getElementById("pageSize")?.remove();
-    const st = Object.assign(document.createElement("style"), { id:"pageSize", textContent:`@page{size:${L.w/300}in ${L.h/300}in;margin:0}` });
-    document.head.append(st);
-    const img = new Image(); img.src = canvas.toDataURL("image/png");
-    await img.decode(); $("#printSheet").replaceChildren(img); window.print();
+    document.head.append(Object.assign(document.createElement("style"), { id:"pageSize", textContent:`@page{size:${L.w/300}in ${L.h/300}in;margin:0}` }));
+    const img = new Image(); img.src = canvas.toDataURL("image/png"); await img.decode(); $("#printSheet").replaceChildren(img); window.print();
   },
 };
 
-/* ---------- Controller / UI ---------- */
+/* ---------- Controller ---------- */
 const finder = $("#finder"), strip = $("#strip");
 const download = (blob, name) => { const a = Object.assign(document.createElement("a"), { href:URL.createObjectURL(blob), download:name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
-const retrigger = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
 const showMsg = (text, btn = true) => { $("#msg").hidden = false; $("#msgText").textContent = text; $("#start").hidden = !btn; };
 
 function syncFinder() {
-  const s = slotsOf(LAYOUTS[state.layout])[0];
-  finder.style.setProperty("--r", (s.w / s.h).toFixed(3));
-  finder.classList.toggle("mirror", state.mirror);
+  const s = slotsOf(LAYOUTS[state.layout])[0], r = s.w/s.h;
+  finder.style.setProperty("--r", r.toFixed(3)); View.size(r);
   $("#mirror").setAttribute("aria-pressed", state.mirror); $("#mirror").textContent = `Mirror: ${state.mirror ? "on" : "off"}`;
-  Camera.el.style.filter = state.filter;
 }
-function syncSegs() { $$(".seg").forEach(seg => $$(".seg button", seg) && seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v) === String(state[seg.dataset.key])))); }
-function redraw() { if (!$("#develop").hidden) Compositor.render(strip, { guides:true }); $("#stkBox").classList.toggle("dis", $("#develop").hidden); }
-
+function syncSegs() { $$(".seg").forEach(seg => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === String(state[seg.dataset.key])))); }
+function redraw() {
+  if (!$("#booth").hidden) Compositor.render($("#live"));
+  if (!$("#develop").hidden) Compositor.render(strip, { guides:true });
+  $("#stkBox").classList.toggle("dis", $("#develop").hidden);
+}
 async function startCamera(next = false) {
   try {
     showMsg("Waiting for camera permission…", false);
     const n = next ? (await Camera.next(), Camera.devices.length) : await Camera.start();
     $("#switch").hidden = n < 2; $("#msg").hidden = true; $("#shutter").disabled = false; syncFinder();
-  } catch (e) {
-    showMsg(e.name === "NotAllowedError" ? "Camera blocked. Allow access in your browser, then try again." : "No usable camera found.");
-  }
+  } catch (e) { showMsg(e.name === "NotAllowedError" ? "Camera blocked. Allow access in your browser, then try again." : "No usable camera found."); }
 }
-
 async function countdown(sec) {
-  const el = $("#count");
-  for (let n = sec; n > 0; n--) { el.textContent = n; retrigger(el, "pop"); await sleep(1000); }
+  for (let n = sec; n > 0; n--) { View.num = n; View.numT = performance.now(); await sleep(1000); }
+  View.num = 0;
 }
-function addThumb(c) {
-  const t = c.cloneNode(); t.getContext("2d").drawImage(c, 0, 0); t.style.setProperty("--t", `${(Math.random()*8-4).toFixed(1)}deg`);
-  t.style.width = "auto"; $("#tray").append(t);
-}
-
 async function runSession() {
-  if (state.busy) return; state.busy = true; state.shots = []; $("#tray").replaceChildren();
-  const L = LAYOUTS[state.layout], slots = slotsOf(L); $("#shutter").classList.add("busy");
-  const recording = state.record && Recorder.start(Camera.el.srcObject); $("#rec").hidden = !recording;
-  for (const s of slots) {
+  if (state.busy) return; state.busy = true; state.shots = []; Film.cache.clear(); redraw();
+  const slots = slotsOf(LAYOUTS[state.layout]); $("#shutter").classList.add("busy");
+  const rec = state.record && Recorder.start(View.el.captureStream(30)); $("#rec").hidden = !rec;
+  for (const [i] of slots.entries()) {
     await countdown(state.timer);
-    retrigger($("#flash"), "go"); state.shots.push(Camera.grab(s)); addThumb(state.shots.at(-1));
-    await sleep(state.timer ? 900 : 1100);
+    View.flashT = performance.now(); state.shots.push(Camera.grab()); redraw();
+    if (i < slots.length-1) await sleep(900);
   }
-  const vid = recording ? await Recorder.stop() : null; $("#rec").hidden = true;
-  $("#shutter").classList.remove("busy"); state.busy = false;
-  develop(vid);
+  $("#rec").hidden = true; $("#shutter").classList.remove("busy"); state.busy = false;
+  develop();                                   // instant preview, no waiting for the video
+  if (rec) { await sleep(500); showVideo(await Recorder.stop()); }
 }
-
-function develop(vid) {
-  state.stickers = []; state.sel = -1;
-  $("#booth").hidden = true; $("#develop").hidden = false;
-  $("#replay").hidden = $("#dlv").hidden = !vid;
-  if (vid) $("#replay").src = URL.createObjectURL(vid);
-  redraw(); retrigger($("#out"), "out");
-  $("#out").style.animation = "none"; void $("#out").offsetWidth; $("#out").style.animation = "";
+function showVideo(b) { if (!b) return; $("#replay").src = URL.createObjectURL(b); $("#replay").hidden = $("#dlv").hidden = false; }
+function develop() {
+  state.stickers = []; state.sel = -1; $("#booth").hidden = true; $("#develop").hidden = false;
+  $("#replay").hidden = $("#dlv").hidden = true; redraw();
+  const o = $("#out"); o.style.animation = "none"; void o.offsetWidth; o.style.animation = "";
 }
-function retake() { $("#develop").hidden = true; $("#booth").hidden = false; $("#tray").replaceChildren(); $("#replay").removeAttribute("src"); redraw(); }
+function retake() { $("#develop").hidden = true; $("#booth").hidden = false; state.shots = []; Film.cache.clear(); $("#replay").removeAttribute("src"); redraw(); }
 
-/* ---------- Sticker interaction (pointer events: mouse + touch + pen) ---------- */
-let drag = null;
+/* ---------- Sticker transform: move, corner handle (resize + rotate), pinch, wheel ---------- */
+const ptrs = new Map(); let mode = null, pinch = null;
 const toCanvas = e => { const r = strip.getBoundingClientRect(); return { x:(e.clientX-r.left)*strip.width/r.width, y:(e.clientY-r.top)*strip.height/r.height }; };
+const local = (k, p) => { const c = Math.cos(-k.rot), s = Math.sin(-k.rot), dx = p.x-k.x, dy = p.y-k.y; return { x:dx*c-dy*s, y:dx*s+dy*c }; };
+const two = () => { const [a, b] = [...ptrs.values()]; return { d:Math.hypot(a.x-b.x, a.y-b.y), a:Math.atan2(b.y-a.y, b.x-a.x) }; };
+const remove = () => { if (state.sel >= 0) { state.stickers.splice(state.sel, 1); state.sel = -1; redraw(); } };
 strip.addEventListener("pointerdown", e => {
-  const p = toCanvas(e); let hit = -1;
-  for (let i = state.stickers.length-1; i >= 0; i--) { const k = state.stickers[i]; if (Math.hypot(p.x-k.x, p.y-k.y) < k.size*.6) { hit = i; break; } }
-  state.sel = hit; if (hit >= 0) { const k = state.stickers[hit]; drag = { dx:k.x-p.x, dy:k.y-p.y }; strip.setPointerCapture(e.pointerId); strip.style.cursor = "grabbing"; }
+  const p = toCanvas(e); ptrs.set(e.pointerId, p); strip.setPointerCapture(e.pointerId);
+  let k = state.stickers[state.sel];
+  if (ptrs.size === 2 && k) { pinch = { ...two(), s:k.size, r:k.rot }; mode = null; return; }
+  if (k) { const lp = local(k, p), h = k.size*.6, R = Compositor.handleR(strip)*1.3;
+    if (Math.hypot(lp.x+h, lp.y+h) < R) { ptrs.clear(); return remove(); }
+    if (Math.hypot(lp.x-h, lp.y-h) < R) { mode = { t:"xf", d:Math.hypot(p.x-k.x, p.y-k.y), a:Math.atan2(p.y-k.y, p.x-k.x), s:k.size, r:k.rot }; return; } }
+  let hit = -1;
+  for (let i = state.stickers.length-1; i >= 0; i--) { const q = state.stickers[i], lp = local(q, p); if (Math.abs(lp.x) < q.size*.6 && Math.abs(lp.y) < q.size*.6) { hit = i; break; } }
+  if (hit >= 0) { [k] = state.stickers.splice(hit, 1); state.stickers.push(k); state.sel = state.stickers.length-1; mode = { t:"mv", dx:k.x-p.x, dy:k.y-p.y }; }
+  else { state.sel = -1; mode = null; }
   redraw();
 });
-strip.addEventListener("pointermove", e => { if (!drag) return; const p = toCanvas(e), k = state.stickers[state.sel]; k.x = p.x+drag.dx; k.y = p.y+drag.dy; redraw(); });
-const endDrag = () => { drag = null; strip.style.cursor = "grab"; };
-strip.addEventListener("pointerup", endDrag); strip.addEventListener("pointercancel", endDrag);
-const resize = f => { const k = state.stickers[state.sel]; if (k) { k.size = Math.max(60, Math.min(600, k.size*f)); redraw(); } };
-const remove = () => { if (state.sel >= 0) { state.stickers.splice(state.sel, 1); state.sel = -1; redraw(); } };
+strip.addEventListener("pointermove", e => {
+  if (!ptrs.has(e.pointerId)) return; const p = toCanvas(e); ptrs.set(e.pointerId, p); const k = state.stickers[state.sel]; if (!k) return;
+  if (ptrs.size === 2 && pinch) { const t = two(); k.size = clamp(pinch.s*t.d/pinch.d, 60, 700); k.rot = pinch.r+t.a-pinch.a; }
+  else if (mode?.t === "mv") { k.x = p.x+mode.dx; k.y = p.y+mode.dy; }
+  else if (mode?.t === "xf") { k.size = clamp(mode.s*Math.hypot(p.x-k.x, p.y-k.y)/mode.d, 60, 700); k.rot = mode.r+Math.atan2(p.y-k.y, p.x-k.x)-mode.a; }
+  else return;
+  redraw();
+});
+const up = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) mode = null; };
+strip.addEventListener("pointerup", up); strip.addEventListener("pointercancel", up);
+strip.addEventListener("wheel", e => { const k = state.stickers[state.sel]; if (!k) return; e.preventDefault();
+  const dy = e.deltaY || e.deltaX; if (e.shiftKey) k.rot += dy*.003; else k.size = clamp(k.size*Math.exp(-dy*.0015), 60, 700); redraw(); }, { passive:false });
 
 /* ---------- Wire up ---------- */
+$("#films").append(...Object.entries(FILMS).map(([id, f]) => Object.assign(document.createElement("button"), { textContent:f.n, dataset:{ v:id } })));
 $$(".seg").forEach(seg => seg.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b || state.busy) return;
   const key = seg.dataset.key; if (key === "layout" && !$("#develop").hidden) retake();
-  state[key] = "num" in seg.dataset ? +b.dataset.v : b.dataset.v; syncSegs(); syncFinder();
+  state[key] = "num" in seg.dataset ? +b.dataset.v : b.dataset.v; syncSegs(); syncFinder(); redraw();
 }));
-$("#themes").append(...Object.entries(THEMES).map(([id, t]) => Object.assign(document.createElement("button"), { title:id, ariaLabel:`${id} theme`, style:`background:linear-gradient(135deg,${t.bg} 55%,${t.ink} 55%)`,
-  onclick() { state.theme = id; state.bg = state.ink = null; syncTheme(); redraw(); } })));
-function syncTheme() { const P = palette(); $("#bg").value = P.bg; $("#ink").value = P.ink; [...$("#themes").children].forEach((b, i) => b.setAttribute("aria-pressed", Object.keys(THEMES)[i] === state.theme && !state.bg && !state.ink)); }
+$("#themes").append(...Object.entries(THEMES).map(([id, t]) => Object.assign(document.createElement("button"), { title:id, ariaLabel:`${id} theme`,
+  style:`background:linear-gradient(135deg,${t.bg} 55%,${t.ink} 55%)`, onclick() { state.theme = id; state.bg = state.ink = null; syncTheme(); redraw(); } })));
+function syncTheme() { const P = palette(); $("#bg").value = P.bg; $("#ink").value = P.ink;
+  [...$("#themes").children].forEach((b, i) => b.setAttribute("aria-pressed", Object.keys(THEMES)[i] === state.theme && !state.bg && !state.ink)); }
 $("#bg").oninput = e => { state.bg = e.target.value; syncTheme(); redraw(); };
 $("#ink").oninput = e => { state.ink = e.target.value; syncTheme(); redraw(); };
 $("#text").oninput = e => { state.text = e.target.value; redraw(); };
-$("#date").onchange = e => { state.date = e.target.checked; redraw(); };
 $("#rv").onchange = e => state.record = e.target.checked;
 $("#stk").append(...STICKERS.map(emoji => Object.assign(document.createElement("button"), { textContent:emoji, ariaLabel:`Add ${emoji}`,
-  onclick() { const L = LAYOUTS[state.layout]; state.stickers.push({ emoji, size:L.w*.22, x:L.w/2+(Math.random()-.5)*L.w*.4, y:L.h/2+(Math.random()-.5)*L.h*.4 }); state.sel = state.stickers.length-1; redraw(); } })));
-$("#smaller").onclick = () => resize(.85); $("#bigger").onclick = () => resize(1.18); $("#del").onclick = remove;
-addEventListener("keydown", e => { if ((e.key === "Delete" || e.key === "Backspace") && !/INPUT/.test(document.activeElement.tagName)) remove(); if (e.code === "Space" && !$("#booth").hidden && !/INPUT|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); runSession(); } });
+  onclick() { const L = LAYOUTS[state.layout]; state.stickers.push({ emoji, size:L.w*.22, rot:0, x:L.w/2+(Math.random()-.5)*L.w*.4, y:L.h/2+(Math.random()-.5)*L.h*.4 }); state.sel = state.stickers.length-1; redraw(); } })));
+$("#del").onclick = remove;
+addEventListener("keydown", e => { const typing = /INPUT/.test(document.activeElement.tagName);
+  if ((e.key === "Delete" || e.key === "Backspace") && !typing) remove();
+  if (e.code === "Space" && !$("#booth").hidden && !typing && document.activeElement.tagName !== "BUTTON") { e.preventDefault(); runSession(); } });
 $("#start").onclick = () => startCamera(); $("#switch").onclick = () => startCamera(true);
 $("#mirror").onclick = () => { state.mirror = !state.mirror; syncFinder(); };
 $("#shutter").onclick = runSession; $("#retake").onclick = retake;
 $("#dl").onclick = async () => download((await Compositor.toBlob()).blob, `photobooth-${Date.now()}.png`);
+$("#raw").onclick = async () => { for (const [i, c] of state.shots.entries()) { download(await new Promise(r => c.toBlob(r, "image/png")), `photobooth-raw-${i+1}.png`); await sleep(350); } };
 $("#dlv").onclick = () => download(Recorder.blob, `photobooth-${Date.now()}.${Recorder.mime.includes("mp4") ? "mp4" : "webm"}`);
 $("#print").onclick = () => Printer.print();
 
 $("#bulbs").innerHTML = "<i></i>".repeat(18);
-syncSegs(); syncTheme(); syncFinder();
+View.init(); syncSegs(); syncTheme(); syncFinder(); redraw(); View.frame();
 document.fonts?.ready.then(redraw);
 if (navigator.mediaDevices?.getUserMedia) startCamera(); else showMsg("This browser has no camera support.", false);
 })();
