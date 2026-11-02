@@ -79,7 +79,7 @@ video#replay{width:100%;max-width:420px;border:3px solid var(--ink);border-radiu
 .knob{width:52px;height:52px;border-radius:50%;padding:0;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#fff7e0,#cdb98c)}
 .knob svg{width:26px;height:26px}.knob[aria-pressed=false]{filter:grayscale(.6) brightness(.8)}
 .led{width:9px;height:9px;border-radius:50%;background:#4a2a1a;box-shadow:inset 0 0 2px #000}
-#mirror[aria-pressed=true]~.cap .led{background:#66ff7a;box-shadow:0 0 8px 2px #66ff7a}
+#mirror[aria-pressed=true]~.cap .led,#sound[aria-pressed=true]~.cap .led{background:#66ff7a;box-shadow:0 0 8px 2px #66ff7a}
 .dial{flex-wrap:nowrap;gap:4px}.dial button{min-width:40px;flex:none;padding:6px 8px;min-height:40px;background:#e9d9ae}
 .dial button[aria-pressed=true]{background:var(--gold);color:var(--ink);box-shadow:0 4px 0 var(--red)}
 .pv{display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--wood2);border:3px solid var(--ink);border-radius:12px;padding:12px}
@@ -95,6 +95,7 @@ dialog::backdrop{background:#000a}dialog h2{font:400 22px Shrikhand,cursive;colo
 #rawGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:12px 0}
 #rawGrid figure{margin:0;display:flex;flex-direction:column;gap:6px}.rawc{width:100%;height:auto;border:3px solid var(--ink)}
 .stk{grid-template-columns:repeat(4,1fr)}.stk button{padding:4px}.stk canvas{width:100%;height:auto;display:block}
+#sheetPrev{max-width:100%;max-height:50vh;border:3px solid var(--ink);background:#fff;display:block;margin:10px auto}#gifImg{max-width:100%;max-height:55vh;display:block;margin:10px auto;border:3px solid var(--ink)}.hint{font-size:12px;margin:8px 0 0}input[type=range]{accent-color:var(--red)}
 </style>
 </head>
 <body>
@@ -108,24 +109,28 @@ dialog::backdrop{background:#000a}dialog h2{font:400 22px Shrikhand,cursive;colo
   <div class="deck">
    <div class="ctl" hidden><button class="knob" id="switch" aria-label="Switch camera"><svg viewBox="0 0 24 24"><path d="M20 7H8a4 4 0 0 0-4 4M4 17h12a4 4 0 0 0 4-4M17 4l3 3-3 3M7 14l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="cap">Camera</span></div>
    <div class="ctl"><button class="knob" id="mirror" aria-pressed="true" aria-label="Mirror preview"><svg viewBox="0 0 24 24"><path d="M12 3v18M8 7l-5 5 5 5zM16 7l5 5-5 5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button><span class="cap"><i class="led"></i>Mirror</span></div>
+   <div class="ctl"><button class="knob" id="sound" aria-pressed="true" aria-label="Sound"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="cap"><i class="led"></i>Sound</span></div>
    <div class="ctl"><button class="shutter" id="shutter" aria-label="Take photos" disabled></button><span class="cap">Shoot</span></div>
    <div class="ctl"><div class="seg dial" data-key="timer" data-num><button data-v="0">Off</button><button data-v="3">3</button><button data-v="5">5</button><button data-v="10">10</button></div><span class="cap">Timer (sec)</span></div>
   </div>
  </div>
  <div id="develop" hidden style="display:flex;flex-direction:column;align-items:center;gap:14px;width:100%">
   <div class="slot"><div class="out" id="out"><canvas id="strip" aria-label="Photo strip preview"></canvas></div></div>
-  <div class="row"><button class="primary" id="dl">Download PNG</button><button id="raw">Raw photos…</button><button id="print">Print</button><button id="dlv" hidden>Download video</button><button id="retake">Retake</button></div>
+  <div class="row"><button class="primary" id="dl">Download PNG</button><button id="raw">Raw photos…</button><button id="print">Print</button><button id="share" hidden>Share</button><button id="gif">GIF</button><button id="boom">Boomerang</button><button id="dlv" hidden>Download video</button><button id="retake">Retake</button></div>
+  <div class="row" id="poses"></div>
   <video id="replay" controls playsinline hidden></video>
  </div>
 </section>
 <aside class="panel">
  <div class="pv" id="pv"><canvas id="live" aria-label="Live strip preview"></canvas><span class="cap">Strip preview</span></div>
- <div class="tabs" role="tablist"><button role="tab" data-tab="shoot" aria-selected="true">Shoot</button><button role="tab" data-tab="style" aria-selected="false">Style</button><button role="tab" data-tab="stk" aria-selected="false">Stickers</button></div>
+ <div class="tabs" role="tablist"><button role="tab" data-tab="shoot" aria-selected="true">Shoot</button><button role="tab" data-tab="style" aria-selected="false">Style</button><button role="tab" data-tab="stk" aria-selected="false">Stickers</button><button role="tab" data-tab="studio" aria-selected="false">Studio</button></div>
  <div class="tab" data-tab="shoot">
   <div><h2>Layout</h2><div class="seg" data-key="layout" id="layouts"></div></div>
   <div><h2>Border</h2><div class="seg" data-key="border"><button data-v="frame">Frame</button><button data-v="thin">Thin</button><button data-v="none">None</button></div></div>
   <div><h2>Film</h2><div class="seg" data-key="film" id="films"></div></div>
   <label class="f"><input type="checkbox" id="rv"> Record video (full strip frame the whole time)</label>
+  <div><label class="f"><input type="checkbox" id="burst"> Burst mode: one countdown, then rapid poses</label>
+   <div class="seg" data-key="gap" data-num style="margin-top:8px"><button data-v="600">Fast</button><button data-v="1000">Normal</button><button data-v="2000">Slow</button></div></div>
  </div>
  <div class="tab" data-tab="style" hidden>
   <div><h2>Theme</h2><div class="sw" id="themes"></div>
@@ -138,9 +143,28 @@ dialog::backdrop{background:#000a}dialog h2{font:400 22px Shrikhand,cursive;colo
   <div class="row" style="margin-top:10px;justify-content:flex-start;flex-wrap:nowrap"><input type="text" id="stkText" maxlength="20" placeholder="Your words" style="flex:1;min-width:0"><input type="color" id="stkColor" value="#d63c2b"><button id="addText">Add</button></div>
   <label class="btn" style="display:block;margin-top:10px;text-align:center">Upload your own image<input type="file" id="upload" accept="image/*" hidden></label>
   <p style="margin:8px 0 0;font-size:12px">Drag to move. The corner dot resizes and rotates, × deletes. Pinch or scroll works too.</p></div></div>
+<div class="tab" data-tab="studio" hidden>
+  <div><h2>Backdrop</h2><div class="seg" data-key="kmode"><button data-v="off">Off</button><button data-v="green">Green</button><button data-v="blue">Blue</button><button data-v="room">Empty room</button></div>
+   <label class="f" style="margin-top:8px">Strength <input type="range" id="ktol" min="15" max="90" value="50" style="flex:1"></label>
+   <button id="kcap" hidden style="margin-top:8px;width:100%">Capture empty room now</button>
+   <h2 style="margin:12px 0 7px">Replace with</h2><div class="seg" data-key="kbg"><button data-v="sunset">Sunset</button><button data-v="night">Night</button><button data-v="sea">Seafoam</button><button data-v="diner">Diner</button><button data-v="paper">Paper</button><button data-v="img">Image</button></div>
+   <label class="btn" style="display:block;margin-top:8px;text-align:center">Upload backdrop image<input type="file" id="kimg" accept="image/*" hidden></label>
+   <p class="hint">Green or Blue: hang an evenly lit plain cloth behind you. Empty room: step out of frame, tap capture, step back in and keep the camera still.</p></div>
+  <div><h2>Custom frame</h2><p class="hint" style="margin:0 0 8px">Overlay PNG with transparent photo windows. Size for this layout: <b id="frameHint"></b> px.</p>
+   <label class="btn" style="display:block;text-align:center">Upload frame overlay<input type="file" id="overIn" accept="image/*" hidden></label>
+   <label class="btn" style="display:block;text-align:center;margin-top:8px">Upload background image<input type="file" id="bgIn" accept="image/*" hidden></label>
+   <div class="row" style="margin-top:8px"><button id="guide">Download template guide</button><button id="overClear">Clear</button></div></div>
+ </div>
+<button id="reset" style="align-self:center;font-size:12px;min-height:36px">Reset to defaults</button>
 </aside>
 </main>
 <dialog id="rawDlg"><h2>Raw photos</h2><p style="margin:0">Cropped to your layout. No film, frame or stickers.</p><div id="rawGrid"></div><div class="row"><button class="primary" id="rawAll">Save all</button><button id="rawClose">Close</button></div></dialog>
+<dialog id="printDlg"><h2>Print sheet</h2>
+ <div class="seg" data-key="paper"><button data-v="exact">Exact size</button><button data-v="4x6">4×6 in</button><button data-v="letter">Letter</button><button data-v="a4">A4</button></div>
+ <div class="seg" data-key="copies" style="margin-top:8px"><button data-v="1">1 copy</button><button data-v="2">2</button><button data-v="4">4</button><button data-v="fill">Fill sheet</button></div>
+ <canvas id="sheetPrev"></canvas><p class="hint" style="margin:0">Cut marks appear when copies share a sheet. Print at 100% scale.</p>
+ <div class="row" style="margin-top:10px"><button class="primary" id="doPrint">Print</button><button id="printClose">Close</button></div></dialog>
+<dialog id="gifDlg"><h2>Your GIF</h2><img id="gifImg" alt="GIF preview"><div class="row"><button class="primary" id="gifSave">Save GIF</button><button id="gifClose">Close</button></div></dialog>
 <div id="printSheet"></div>
 
 <script>
@@ -201,8 +225,11 @@ const STICKERS = ["⭐","❤️","😎","🎀","🌈","🎈","💋","🎩","✨"
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
 /* ---------- State ---------- */
-const state = { layout:"strip", timer:3, film:"none", record:false, mirror:true, theme:"deco", pat:"theme", tex:"grain", border:"frame", done:false, bg:null, ink:null,
+const state = { layout:"strip", timer:3, film:"none", record:false, mirror:true, theme:"deco", kmode:"off", ktol:50, kbg:"sunset", burst:false, gap:1000, paper:"exact", copies:"1", pat:"theme", tex:"grain", border:"frame", done:false, bg:null, ink:null,
   text:"", dstyle:"off", stickers:[], sel:-1, shots:[], busy:false };
+const PERSIST = ["layout","timer","film","record","theme","bg","ink","pat","tex","border","text","dstyle","burst","gap","paper","copies"];
+try { const saved = JSON.parse(localStorage.getItem("pb:v1") || "{}"); PERSIST.forEach(k => { if (k in saved) state[k] = saved[k]; }); } catch {}
+if (!LAYOUTS[state.layout]) state.layout = "strip"; if (!THEMES[state.theme]) state.theme = "deco"; if (!FILMS[state.film]) state.film = "none";
 const slotsOf = L => {
   const aw = (L.w-2*L.pad-(L.cols-1)*L.gap)/L.cols, ah = (L.h-(L.padT ?? L.pad)-L.foot-(L.rows-1)*L.gap)/L.rows, out = [];
   for (let r=0;r<L.rows;r++) for (let c=0;c<L.cols;c++) out.push({ x:L.pad+c*(aw+L.gap), y:(L.padT ?? L.pad)+r*(ah+L.gap), w:aw, h:ah });
@@ -260,9 +287,9 @@ const Film = {
   },
   /** Developed (cropped + film-processed) version of raw shot i, cached until the film or layout changes. */
   shot(i, s) {
-    const key = `${state.film}|${i}|${s.w|0}x${s.h|0}`; let c = this.cache.get(key); if (c) return c;
+    const key = `${state.film}|${Keyer.sig()}|${i}|${s.w|0}x${s.h|0}`; let c = this.cache.get(key); if (c) return c;
     c = Object.assign(document.createElement("canvas"), { width:s.w|0, height:s.h|0 });
-    cover(c.getContext("2d"), shotAt(i), c.width, c.height); this.process(c, state.film); this.cache.set(key, c); return c;
+    cover(c.getContext("2d"), shotAt(i), c.width, c.height); Keyer.process(c); this.process(c, state.film); this.cache.set(key, c); return c;
   },
 };
 
@@ -288,9 +315,9 @@ const Camera = {
   },
 };
 const View = {
-  el: $("#view"), num: 0, numT: 0, flashT: 0,
+  el: $("#view"), w: 540, r: 1, ema: 0, n: 0, num: 0, numT: 0, flashT: 0,
   init() { this.g = this.el.getContext("2d", { willReadFrequently:true }); },
-  size(r) { this.el.width = 540; this.el.height = Math.round(540/r); },
+  size(r) { this.r = r; this.el.width = this.w; this.el.height = Math.round(this.w/r); },
   overlay(g, W, H) {
     const now = performance.now();
     if (this.num) {
@@ -303,9 +330,11 @@ const View = {
   },
   frame() {
     requestAnimationFrame(() => this.frame());
-    const v = Camera.el; if (!v.videoWidth || ($("#booth").hidden && !Recorder.active)) return;
-    const c = this.el; cover(this.g, v, c.width, c.height, state.mirror);
-    Film.process(c, state.film); this.overlay(this.g, c.width, c.height); if (Recorder.active) Rec.draw();
+    const v = Camera.el; if (v.videoWidth) Clips.tick(); if (!v.videoWidth || ($("#booth").hidden && !Recorder.active)) return;
+    const t0 = performance.now(), c = this.el; cover(this.g, v, c.width, c.height, state.mirror);
+    Keyer.process(c); Film.process(c, state.film); this.overlay(this.g, c.width, c.height); if (Recorder.active) Rec.draw();
+    this.ema = (this.ema || 0)*.9 + (performance.now()-t0)*.1;
+    if (++this.n % 45 === 0 && this.ema > 26 && this.w > 300) { this.w = Math.round(this.w*.8); this.size(this.r); this.ema = 0; }
   },
 };
 
@@ -349,12 +378,59 @@ const Stickers = {
   },
 };
 
+const mk = (w, h) => Object.assign(document.createElement("canvas"), { width:w, height:h });
+const Custom = { over:null, bg:null, id:0 };
+/* Backdrop replacement: chroma key (YCbCr distance + despill) or empty-room difference key. */
+const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x-a)/(b-a))); return t*t*(3-2*t); };
+const Keyer = {
+  ref:null, img:null, id:0, bds:new Map(), refs:new Map(),
+  get on() { return state.kmode !== "off" && (state.kmode !== "room" || !!this.ref); },
+  sig() { return this.on ? [state.kmode, state.ktol, state.kbg, this.id, palette().bg].join(":") : "off"; },
+  bd(w, h) {
+    const P = palette(), key = `${state.kbg}|${w}x${h}|${P.bg}|${this.id}`; let d = this.bds.get(key); if (d) return d;
+    const c = mk(w, h), g = c.getContext("2d"), lin = (...st) => { const gr = g.createLinearGradient(0,0,0,h); st.forEach((col, i) => gr.addColorStop(i/(st.length-1), col)); g.fillStyle = gr; g.fillRect(0,0,w,h); };
+    if (state.kbg === "img" && this.img) cover(g, this.img, w, h);
+    else if (state.kbg === "night") { lin("#0b1030", "#26307a"); g.fillStyle = "#fff6c8"; for (let i=0;i<40;i++) { const a = Math.sin(i*91.7)*43758.5, b = Math.sin(i*12.99)*43758.5; g.fillRect((a-Math.floor(a))*w, (b-Math.floor(b))*h*.8, 2, 2); } }
+    else if (state.kbg === "sea") lin("#1f8f86", "#a9e0c8");
+    else if (state.kbg === "diner") { const z = w/6; for (let y=0;y*z<h;y++) for (let x=0;x<6;x++) { g.fillStyle = (x+y)%2 ? "#f4e6c8" : "#d63c2b"; g.fillRect(x*z, y*z, z+1, z+1); } }
+    else if (state.kbg === "paper") { g.fillStyle = P.bg; g.fillRect(0,0,w,h); }
+    else lin("#2b1b4a", "#d63c2b", "#f2b134");
+    d = g.getImageData(0,0,w,h).data; if (this.bds.size > 24) this.bds.clear(); this.bds.set(key, d); return d;
+  },
+  refData(w, h) { const k = `${this.id}|${w}x${h}`; let d = this.refs.get(k);
+    if (!d) { const c = mk(w, h); cover(c.getContext("2d"), this.ref, w, h); d = c.getContext("2d").getImageData(0,0,w,h).data; if (this.refs.size > 24) this.refs.clear(); this.refs.set(k, d); } return d; },
+  process(c) {
+    if (!this.on) return c;
+    const w = c.width, h = c.height, g = c.getContext("2d"), img = g.getImageData(0,0,w,h), d = img.data, bg = this.bd(w, h), tol = state.ktol;
+    const room = state.kmode === "room", ref = room ? this.refData(w, h) : null, blue = state.kmode === "blue", key = blue ? [0,70,255] : [0,177,64];
+    const cbcr = (r, gg, b) => [-.1687*r - .3313*gg + .5*b, .5*r - .4187*gg - .0813*b], [kcb, kcr] = cbcr(...key);
+    for (let i = 0; i < d.length; i += 4) {
+      let a;
+      if (room) a = ss(tol*.6, tol*2.2, Math.abs(d[i]-ref[i]) + Math.abs(d[i+1]-ref[i+1]) + Math.abs(d[i+2]-ref[i+2]));
+      else { const [cb, cr] = cbcr(d[i], d[i+1], d[i+2]); a = ss(tol*.45, tol*1.3, Math.hypot(cb-kcb, cr-kcr));
+        if (a < 1) { if (blue) { const m = (d[i]+d[i+1])/2; if (d[i+2] > m) d[i+2] = m; } else { const m = (d[i]+d[i+2])/2; if (d[i+1] > m) d[i+1] = m; } } }
+      d[i] = d[i]*a + bg[i]*(1-a); d[i+1] = d[i+1]*a + bg[i+1]*(1-a); d[i+2] = d[i+2]*a + bg[i+2]*(1-a);
+    }
+    g.putImageData(img, 0, 0); return c;
+  },
+};
+/* Short live clips around each shutter press (raw frames, film is applied at export) for Boomerang. */
+const Clips = { ring:[], last:0, pend:null, data:{},
+  tick() {
+    const now = performance.now(); if (now-this.last < 90) return; this.last = now;
+    const c = mk(270, Math.round(270*View.el.height/View.el.width)); cover(c.getContext("2d"), Camera.el, c.width, c.height, state.mirror);
+    this.ring.push(c); if (this.ring.length > 8) this.ring.shift();
+    if (this.pend) { this.pend.frames.push(c); if (--this.pend.need <= 0) { this.data[this.pend.i] = this.pend.frames; this.pend = null; } }
+  },
+  mark(i) { this.pend = { i, frames:this.ring.slice(-6), need:4 }; },
+};
+
 /* ---------- Compositor ---------- */
 const Compositor = {
   render(canvas, { guides = false, scale = 1 } = {}) {
     const L = LY(), P = palette(), g = canvas.getContext("2d"), slots = slotsOf(L);
     canvas.width = L.w*scale; canvas.height = L.h*scale; g.scale(scale, scale);
-    g.fillStyle = P.bg; g.fillRect(0,0,L.w,L.h); this.pattern(g, L, P.pat, P.ink); this.texture(g, L);
+    g.drawImage(this.background(L, P), 0, 0);
     slots.forEach((s, i) => {
       if (L.tilt) return this.card(g, s, i, L);
       if (L.mat) { g.fillStyle = "#fffaf0"; g.fillRect(s.x-L.mat, s.y-L.mat, s.w+2*L.mat, s.h+2*L.mat); }
@@ -362,6 +438,7 @@ const Compositor = {
     });
     if (!L.tilt) this.dateStamp(g, slots);
     this.footer(g, L, P);
+    if (Custom.over) g.drawImage(Custom.over, 0, 0, L.w, L.h);
     state.stickers.forEach(k => Stickers.draw(g, k));
     if (guides && state.sel >= 0) this.handles(g, canvas);
   },
@@ -377,6 +454,13 @@ const Compositor = {
     if (kind === "pinstripe") { g.lineWidth = 3; g.beginPath(); for (let x=10;x<L.w;x+=26) { g.moveTo(x,0); g.lineTo(x,L.h); } g.stroke(); }
     if (kind === "sprocket" && L.pad) { g.globalAlpha = .85; for (let y=20;y<L.h;y+=64) { g.fillRect(L.pad/2-11,y,22,32); g.fillRect(L.w-L.pad/2-11,y,22,32); } }
     g.restore();
+  },
+  bgCache: { key:"", c:null },
+  background(L, P) {
+    const key = [state.layout, state.border, L.pad, P.bg, P.ink, P.pat, state.tex, Custom.id].join("|");
+    if (this.bgCache.key !== key) { const c = document.createElement("canvas"), g = c.getContext("2d"); c.width = L.w; c.height = L.h;
+      g.fillStyle = P.bg; g.fillRect(0, 0, L.w, L.h); if (Custom.bg) cover(g, Custom.bg, L.w, L.h); this.pattern(g, L, P.pat, P.ink); this.texture(g, L); this.bgCache = { key, c }; }
+    return this.bgCache.c;
   },
   tile: null,
   texture(g, L) {
@@ -455,6 +539,14 @@ const Recorder = {
 };
 
 /* Framed recording canvas: theme frame around the filmed live view, then the finished strip as an end card. */
+const Sound = { on:true, ctx:null,
+  unlock() { if (!this.on) return; this.ctx ||= new (window.AudioContext || window.webkitAudioContext)(); this.ctx.resume?.(); },
+  beep(f, d = .09) { if (!this.on || !this.ctx) return; const c = this.ctx, o = c.createOscillator(), g = c.createGain(); o.type = "square"; o.frequency.value = f;
+    g.gain.setValueAtTime(.06, c.currentTime); g.gain.exponentialRampToValueAtTime(.0001, c.currentTime+d); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime+d); },
+  shutter() { if (!this.on || !this.ctx) return; const c = this.ctx, n = c.createBuffer(1, c.sampleRate*.14, c.sampleRate), d = n.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/d.length, 3);
+    const src = c.createBufferSource(), g = c.createGain(); g.gain.value = .35; src.buffer = n; src.connect(g).connect(c.destination); src.start(); },
+};
 const Rec = { el: document.createElement("canvas"), base: document.createElement("canvas"), k: 1, idx: 0,
   size() { this.L = LY(); this.slots = slotsOf(this.L); this.k = Math.min(1, 1280/Math.max(this.L.w, this.L.h)); this.idx = 0; this.refresh();
     this.el.width = this.base.width; this.el.height = this.base.height; },
@@ -465,12 +557,75 @@ const Rec = { el: document.createElement("canvas"), base: document.createElement
     g.drawImage(View.el, -s.w*k/2, -s.h*k/2, s.w*k, s.h*k); g.restore();
   },
 };
+const BAYER = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+/* Minimal GIF89a encoder: 216-colour web-safe palette with ordered dithering, LZW compressed. */
+const Gif = {
+  lzw(idx) {
+    const bytes = []; let cur = 0, sh = 0, size = 9, next = 258, dict = new Map();
+    const emit = c => { cur |= c << sh; sh += size; while (sh >= 8) { bytes.push(cur & 255); cur >>= 8; sh -= 8; } };
+    emit(256); let pre = idx[0];
+    for (let i = 1; i < idx.length; i++) {
+      const k = idx[i], key = pre << 8 | k, hit = dict.get(key);
+      if (hit === undefined) { emit(pre);
+        if (next === 4096) { emit(256); next = 258; size = 9; dict = new Map(); } else { if (next >= (1 << size)) size++; dict.set(key, next++); }
+        pre = k; } else pre = hit;
+    }
+    emit(pre); emit(257); if (sh > 0) bytes.push(cur & 255); return bytes;
+  },
+  encode(frames, w, h) {
+    const o = [], b = v => o.push(v & 255), s16 = v => { b(v); b(v >> 8); };
+    [..."GIF89a"].forEach(ch => b(ch.charCodeAt(0))); s16(w); s16(h); b(0xF7); b(0); b(0);
+    for (let i = 0; i < 256; i++) { if (i < 216) { b((i/36|0)*51); b((i/6|0)%6*51); b(i%6*51); } else { b(0); b(0); b(0); } }
+    [0x21,0xFF,11].forEach(b); [..."NETSCAPE2.0"].forEach(ch => b(ch.charCodeAt(0))); [3,1,0,0,0].forEach(b);
+    frames.forEach(({ c, ms }) => {
+      const d = c.getContext("2d").getImageData(0,0,w,h).data, idx = new Uint8Array(w*h);
+      for (let y = 0, p = 0; y < h; y++) for (let x = 0; x < w; x++, p++) { const t = (BAYER[(y&3)<<2 | (x&3)]-7.5)*3.4, q = v => Math.min(5, Math.max(0, Math.round((v+t)/51)));
+        idx[p] = q(d[p*4])*36 + q(d[p*4+1])*6 + q(d[p*4+2]); }
+      [0x21,0xF9,4,0].forEach(b); s16(Math.round(ms/10)); b(0); b(0); b(0x2C); s16(0); s16(0); s16(w); s16(h); b(0); b(8);
+      const z = this.lzw(idx); for (let i = 0; i < z.length; i += 255) { const n = Math.min(255, z.length-i); b(n); for (let j = 0; j < n; j++) b(z[i+j]); } b(0);
+    });
+    b(0x3B); return new Blob([new Uint8Array(o)], { type:"image/gif" });
+  },
+};
+const Anim = {
+  async slideshow() {
+    const slots = slotsOf(LY()), w = 400, h = Math.round(w*slots[0].h/slots[0].w), frames = [];
+    state.shots.forEach((_, i) => { const c = mk(w, h); c.getContext("2d").drawImage(Film.shot(i, slots[i % slots.length]), 0, 0, w, h); frames.push({ c, ms:800 }); });
+    const st = (await Compositor.toBlob()).canvas, f = mk(w, h), g = f.getContext("2d"), k = Math.min(w/st.width, h/st.height)*.95;
+    g.fillStyle = palette().bg; g.fillRect(0, 0, w, h); g.drawImage(st, (w-st.width*k)/2, (h-st.height*k)/2, st.width*k, st.height*k); frames.push({ c:f, ms:1800 });
+    return Gif.encode(frames, w, h);
+  },
+  async boomerang() {
+    const clips = state.shots.map((_, i) => Clips.data[i]).filter(Boolean); if (!clips.length) return null;
+    const w = clips[0][0].width, h = clips[0][0].height, frames = [];
+    clips.forEach(cl => { const px = cl.map(fr => { const c = mk(w, h); cover(c.getContext("2d"), fr, w, h); Keyer.process(c); Film.process(c, state.film); return c; });
+      [...px, ...px.slice(1, -1).reverse()].forEach(c => frames.push({ c, ms:90 })); });
+    return Gif.encode(frames, w, h);
+  },
+};
+const PAPERS = { "4x6":[1200,1800], letter:[2550,3300], a4:[2480,3508] };
 const Printer = {
+  sheet: null,
+  /** Tile copies of the strip on the chosen paper (300 dpi) with crop marks. */
+  async build() {
+    const { canvas } = await Compositor.toBlob(), w = canvas.width, h = canvas.height, gap = 56, m = 90; let PW = w, PH = h, cols = 1, rows = 1, sc = 1;
+    if (state.paper !== "exact") {
+      const [a, b] = PAPERS[state.paper], fit = (W, H) => ({ W, H, c:Math.max(0, Math.floor((W-2*m+gap)/(w+gap))), r:Math.max(0, Math.floor((H-2*m+gap)/(h+gap))) });
+      const p = fit(a, b), q = fit(b, a), best = p.c*p.r >= q.c*q.r ? p : q; PW = best.W; PH = best.H; cols = best.c; rows = best.r;
+      if (!cols*rows) { cols = rows = 1; sc = Math.min(1, (PW-2*m)/w, (PH-2*m)/h); }
+    }
+    const n = state.copies === "fill" ? cols*rows : Math.min(+state.copies, cols*rows), cw = w*sc, ch = h*sc;
+    const sheet = mk(PW, PH), g = sheet.getContext("2d"), x0 = (PW-(cols*cw+(cols-1)*gap))/2, y0 = (PH-(rows*ch+(rows-1)*gap))/2;
+    g.fillStyle = "#fff"; g.fillRect(0, 0, PW, PH); g.strokeStyle = "#000"; g.lineWidth = 2;
+    for (let i = 0; i < n; i++) { const x = x0+(i%cols)*(cw+gap), y = y0+Math.floor(i/cols)*(ch+gap); g.drawImage(canvas, x, y, cw, ch);
+      if (state.paper !== "exact") { g.beginPath(); [[x,y,-1,-1],[x+cw,y,1,-1],[x,y+ch,-1,1],[x+cw,y+ch,1,1]].forEach(([cx, cy, dx, dy]) => { g.moveTo(cx+dx*8, cy); g.lineTo(cx+dx*26, cy); g.moveTo(cx, cy+dy*8); g.lineTo(cx, cy+dy*26); }); g.stroke(); } }
+    return sheet;
+  },
+  async preview() { this.sheet = await this.build(); const pv = $("#sheetPrev"); pv.width = this.sheet.width; pv.height = this.sheet.height; pv.getContext("2d").drawImage(this.sheet, 0, 0); },
   async print() {
-    const L = LAYOUTS[state.layout], { canvas } = await Compositor.toBlob();
-    document.getElementById("pageSize")?.remove();
-    document.head.append(Object.assign(document.createElement("style"), { id:"pageSize", textContent:`@page{size:${L.w/300}in ${L.h/300}in;margin:0}` }));
-    const img = new Image(); img.src = canvas.toDataURL("image/png"); await img.decode(); $("#printSheet").replaceChildren(img); window.print();
+    const sh = this.sheet || await this.build(); document.getElementById("pageSize")?.remove();
+    document.head.append(Object.assign(document.createElement("style"), { id:"pageSize", textContent:`@page{size:${sh.width/300}in ${sh.height/300}in;margin:0}` }));
+    const img = new Image(); img.src = sh.toDataURL("image/png"); await img.decode(); $("#printSheet").replaceChildren(img); window.print();
   },
 };
 
@@ -480,12 +635,14 @@ const download = (blob, name) => { const a = Object.assign(document.createElemen
 const showMsg = (text, btn = true) => { $("#msg").hidden = false; $("#msgText").textContent = text; $("#start").hidden = !btn; };
 
 function syncFinder() {
-  const s = slotsOf(LY())[0], r = s.w/s.h;
+  const s = slotsOf(LY())[0], r = s.w/s.h; $("#frameHint").textContent = `${LY().w}×${LY().h}`;
   finder.style.setProperty("--r", r.toFixed(3)); View.size(r);
   $("#mirror").setAttribute("aria-pressed", state.mirror);
 }
-function syncSegs() { $$(".seg").forEach(seg => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === String(state[seg.dataset.key])))); }
+function syncSegs() { $("#kcap").hidden = state.kmode !== "room"; $$(".seg").forEach(seg => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === String(state[seg.dataset.key])))); }
+let saveT;
 function redraw() {
+  clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem("pb:v1", JSON.stringify(Object.fromEntries(PERSIST.map(k => [k, state[k]])))); } catch {} }, 500);
   if (!$("#booth").hidden) Compositor.render($("#live"));
   if (!$("#develop").hidden) Compositor.render(strip, { guides:true });
   $("#stkBox").classList.toggle("dis", $("#develop").hidden);
@@ -498,17 +655,17 @@ async function startCamera(next = false) {
   } catch (e) { showMsg(e.name === "NotAllowedError" ? "Camera blocked. Allow access in your browser, then try again." : "No usable camera found."); }
 }
 async function countdown(sec) {
-  for (let n = sec; n > 0; n--) { View.num = n; View.numT = performance.now(); await sleep(1000); }
+  for (let n = sec; n > 0; n--) { View.num = n; View.numT = performance.now(); Sound.beep(n === 1 ? 1320 : 880); await sleep(1000); }
   View.num = 0;
 }
 async function runSession() {
-  if (state.busy) return; state.busy = true; state.done = false; state.stickers = []; state.sel = -1; state.shots = []; Film.cache.clear(); redraw();
+  if (state.busy) return; state.busy = true; state.done = false; state.stickers = []; state.sel = -1; Sound.unlock(); Clips.data = {}; Clips.pend = null; state.shots = []; Film.cache.clear(); redraw();
   const slots = slotsOf(LY()); $("#shutter").classList.add("busy");
   const rec = state.record && (Rec.size(), Rec.draw(), Recorder.start(Rec.el.captureStream(30))); $("#rec").hidden = !rec;
   if (rec) await sleep(1200);                    // lead-in before the first countdown
   for (const [i] of slots.entries()) {
-    await countdown(state.timer);
-    View.flashT = performance.now(); state.shots.push(Camera.grab()); redraw(); if (rec) Rec.refresh();
+    if (state.burst && i > 0) { View.num = i+1; View.numT = performance.now(); Sound.beep(660); await sleep(state.gap); View.num = 0; } else await countdown(state.timer);
+    View.flashT = performance.now(); Sound.shutter(); state.shots.push(Camera.grab()); Clips.mark(i); redraw(); if (rec) Rec.refresh();
     if (rec || i < slots.length-1) await sleep(450);
     Rec.idx = -1; if (i < slots.length-1) { await sleep(450); Rec.idx = i+1; }
   }
@@ -517,10 +674,17 @@ async function runSession() {
   if (rec) { await sleep(2200); showVideo(await Recorder.stop()); }
 }
 function showVideo(b) { if (!b) return; $("#replay").src = URL.createObjectURL(b); $("#replay").hidden = $("#dlv").hidden = false; }
-function develop() {
-  state.done = true; $("#pv").hidden = true; state.stickers = []; state.sel = -1; $("#booth").hidden = true; $("#develop").hidden = false;
-  $("#replay").hidden = $("#dlv").hidden = true; redraw();
+function develop(keep) {
+  state.done = true; $("#pv").hidden = true; if (!keep) { state.stickers = []; state.sel = -1; } $("#booth").hidden = true; $("#develop").hidden = false;
+  $("#replay").hidden = $("#dlv").hidden = true;
+  $("#poses").replaceChildren(...state.shots.map((_, i) => { const b = mkBtn(`↻ Pose ${i+1}`, ""); b.onclick = () => retakeOne(i); return b; })); redraw();
   const o = $("#out"); o.style.animation = "none"; void o.offsetWidth; o.style.animation = "";
+}
+async function retakeOne(i) {
+  if (state.busy) return; state.busy = true; state.done = false; Sound.unlock();
+  $("#develop").hidden = true; $("#booth").hidden = false; $("#pv").hidden = false; $("#shutter").classList.add("busy"); redraw();
+  await countdown(state.timer); View.flashT = performance.now(); Sound.shutter(); state.shots[i] = Camera.grab(); Clips.mark(i); Film.cache.clear(); redraw(); await sleep(450);
+  $("#shutter").classList.remove("busy"); state.busy = false; develop(true);
 }
 function retake() { $("#develop").hidden = true; $("#booth").hidden = false; $("#pv").hidden = false; state.done = false; state.shots = []; Film.cache.clear(); $("#replay").removeAttribute("src"); redraw(); }
 
@@ -576,6 +740,16 @@ $("#bg").oninput = e => { state.bg = e.target.value; syncTheme(); redraw(); };
 $("#ink").oninput = e => { state.ink = e.target.value; syncTheme(); redraw(); };
 $("#text").oninput = e => { state.text = e.target.value; redraw(); };
 $("#rv").onchange = e => state.record = e.target.checked;
+$("#burst").onchange = e => { state.burst = e.target.checked; redraw(); };
+$("#ktol").oninput = e => { state.ktol = +e.target.value; }; $("#ktol").onchange = () => redraw();
+const loadImg = (f, cb) => { const img = new Image(); img.onload = () => cb(img); img.src = URL.createObjectURL(f); };
+$("#kimg").onchange = e => { const f = e.target.files[0]; if (f) loadImg(f, img => { Keyer.img = img; Keyer.id++; state.kbg = "img"; syncSegs(); redraw(); }); e.target.value = ""; };
+$("#kcap").onclick = () => { Keyer.ref = Camera.grab(); Keyer.id++; View.flashT = performance.now(); redraw(); };
+$("#overIn").onchange = e => { const f = e.target.files[0]; if (f) loadImg(f, img => { Custom.over = img; Custom.id++; redraw(); }); e.target.value = ""; };
+$("#bgIn").onchange = e => { const f = e.target.files[0]; if (f) loadImg(f, img => { Custom.bg = img; Custom.id++; redraw(); }); e.target.value = ""; };
+$("#overClear").onclick = () => { Custom.over = Custom.bg = null; Custom.id++; redraw(); };
+$("#guide").onclick = async () => { const L = LY(), c = mk(L.w, L.h), g = c.getContext("2d"); g.fillStyle = "rgba(255,45,149,.55)"; g.fillRect(0, 0, L.w, L.h);
+  slotsOf(L).forEach(s => g.clearRect(s.x, s.y, s.w, s.h)); download(await toPng(c), `frame-template-${state.layout}-${L.w}x${L.h}.png`); };
 const addSticker = k => { const L = LAYOUTS[state.layout]; state.stickers.push({ size:Math.min(L.w, L.h)*.22, rot:(Math.random()-.5)*.3, x:L.w/2+(Math.random()-.5)*L.w*.35, y:L.h/2+(Math.random()-.5)*L.h*.35, ...k }); state.sel = state.stickers.length-1; redraw(); };
 $("#stk").append(...Object.keys(DEFS).map(id => { const c = Object.assign(document.createElement("canvas"), { width:104, height:104 }), b = document.createElement("button");
   Stickers.draw(c.getContext("2d"), { id, x:52, y:52, size:88, rot:0 }); b.append(c); b.title = DEFS[id].n; b.setAttribute("aria-label", `Add ${DEFS[id].n} sticker`); b.onclick = () => addSticker({ id }); return b; }));
@@ -588,6 +762,8 @@ addEventListener("keydown", e => { const typing = /INPUT/.test(document.activeEl
   if (e.code === "Space" && !$("#booth").hidden && !typing && document.activeElement.tagName !== "BUTTON") { e.preventDefault(); runSession(); } });
 $("#start").onclick = () => startCamera(); $("#switch").onclick = () => startCamera(true);
 $("#mirror").onclick = () => { state.mirror = !state.mirror; syncFinder(); };
+$("#reset").onclick = () => { try { localStorage.removeItem("pb:v1"); } catch {} location.reload(); };
+$("#sound").onclick = () => { Sound.on = !Sound.on; $("#sound").setAttribute("aria-pressed", Sound.on); if (Sound.on) { Sound.unlock(); Sound.beep(660); } };
 $("#shutter").onclick = runSession; $("#retake").onclick = retake;
 $("#dl").onclick = async () => download((await Compositor.toBlob()).blob, `photobooth-${Date.now()}.png`);
 const toPng = c => new Promise(r => c.toBlob(r, "image/png"));
@@ -601,9 +777,21 @@ $("#raw").onclick = () => { const crops = rawCrops();
   $("#rawDlg").showModal(); };
 $("#rawClose").onclick = () => $("#rawDlg").close();
 $("#dlv").onclick = () => download(Recorder.blob, `photobooth-${Date.now()}.${Recorder.mime.includes("mp4") ? "mp4" : "webm"}`);
-$("#print").onclick = () => Printer.print();
+$("#print").onclick = () => { $("#printDlg").showModal(); Printer.preview(); };
+$("#printDlg").addEventListener("click", e => { if (e.target.closest(".seg button")) Printer.preview(); });
+$("#doPrint").onclick = () => Printer.print(); $("#printClose").onclick = () => $("#printDlg").close();
+const runAnim = async (btn, fn, name) => { const t = btn.textContent; btn.disabled = true; btn.textContent = "Encoding…"; await sleep(30);
+  const blob = await fn().catch(() => null); btn.disabled = false; btn.textContent = blob ? t : "Nothing to export"; if (!blob) return void setTimeout(() => btn.textContent = t, 1800);
+  $("#gifImg").src = URL.createObjectURL(blob); $("#gifSave").onclick = () => download(blob, `photobooth-${name}-${Date.now()}.gif`); $("#gifDlg").showModal(); };
+$("#gif").onclick = e => runAnim(e.currentTarget, () => Anim.slideshow(), "slideshow");
+$("#boom").onclick = e => runAnim(e.currentTarget, () => Anim.boomerang(), "boomerang");
+$("#gifClose").onclick = () => $("#gifDlg").close();
+$("#share").hidden = !(navigator.canShare && (() => { try { return navigator.canShare({ files:[new File(["x"], "a.png", { type:"image/png" })] }); } catch { return false; } })());
+$("#share").onclick = async () => { const { blob } = await Compositor.toBlob(); try { await navigator.share({ files:[new File([blob], "photobooth.png", { type:"image/png" })], title:"Photo Booth" }); } catch {} };
 
 $("#bulbs").innerHTML = "<i></i>".repeat(18);
+if (!window.MediaRecorder) { $("#rv").disabled = true; state.record = false; $("#rv").parentElement.append(" (not supported in this browser)"); }
+$("#rv").checked = state.record; $("#burst").checked = state.burst; $("#ktol").value = state.ktol; $("#text").value = state.text;
 View.init(); syncSegs(); syncTheme(); syncFinder(); redraw(); View.frame();
 document.fonts?.ready.then(redraw);
 if (navigator.mediaDevices?.getUserMedia) startCamera(); else showMsg("This browser has no camera support.", false);
