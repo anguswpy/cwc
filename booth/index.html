@@ -96,6 +96,9 @@ dialog::backdrop{background:#000a}dialog h2{font:400 22px Shrikhand,cursive;colo
 #rawGrid figure{margin:0;display:flex;flex-direction:column;gap:6px}.rawc{width:100%;height:auto;border:3px solid var(--ink)}
 .stk{grid-template-columns:repeat(4,1fr)}.stk button{padding:4px}.stk canvas{width:100%;height:auto;display:block}
 #sheetPrev{max-width:100%;max-height:50vh;border:3px solid var(--ink);background:#fff;display:block;margin:10px auto}#gifImg{max-width:100%;max-height:55vh;display:block;margin:10px auto;border:3px solid var(--ink)}.hint{font-size:12px;margin:8px 0 0}input[type=range]{accent-color:var(--red)}
+.ctl{position:relative}#camName{max-width:130px;text-align:center;white-space:normal;line-height:1.25}
+.menu{position:absolute;bottom:calc(100% + 10px);left:0;min-width:230px;background:var(--panel);border:3px solid var(--ink);border-radius:12px;box-shadow:6px 6px 0 #000a;padding:6px;z-index:20;display:flex;flex-direction:column;gap:4px}
+.menu button{text-align:left;box-shadow:none;min-height:40px;font-size:12px}.menu button[aria-checked=true]{background:var(--ink);color:var(--cream)}.menu button[aria-checked=true]::before{content:"● "}
 </style>
 </head>
 <body>
@@ -107,7 +110,7 @@ dialog::backdrop{background:#000a}dialog h2{font:400 22px Shrikhand,cursive;colo
    <div id="msg"><p id="msgText">Camera is off.</p><button class="primary" id="start">Turn on camera</button></div></div>
   
   <div class="deck">
-   <div class="ctl" hidden><button class="knob" id="switch" aria-label="Switch camera"><svg viewBox="0 0 24 24"><path d="M20 7H8a4 4 0 0 0-4 4M4 17h12a4 4 0 0 0 4-4M17 4l3 3-3 3M7 14l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="cap">Camera</span></div>
+   <div class="ctl" hidden><button class="knob" id="switch" aria-label="Switch camera"><svg viewBox="0 0 24 24"><path d="M20 7H8a4 4 0 0 0-4 4M4 17h12a4 4 0 0 0 4-4M17 4l3 3-3 3M7 14l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="cap" id="camName">Camera</span><div class="menu" id="camMenu" role="menu" hidden></div></div>
    <div class="ctl"><button class="knob" id="mirror" aria-pressed="true" aria-label="Mirror preview"><svg viewBox="0 0 24 24"><path d="M12 3v18M8 7l-5 5 5 5zM16 7l5 5-5 5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button><span class="cap"><i class="led"></i>Mirror</span></div>
    <div class="ctl"><button class="knob" id="sound" aria-pressed="true" aria-label="Sound"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="cap"><i class="led"></i>Sound</span></div>
    <div class="ctl"><button class="shutter" id="shutter" aria-label="Take photos" disabled></button><span class="cap">Shoot</span></div>
@@ -118,6 +121,7 @@ dialog::backdrop{background:#000a}dialog h2{font:400 22px Shrikhand,cursive;colo
   <div class="slot"><div class="out" id="out"><canvas id="strip" aria-label="Photo strip preview"></canvas></div></div>
   <div class="row"><button class="primary" id="dl">Download PNG</button><button id="raw">Raw photos…</button><button id="print">Print</button><button id="share" hidden>Share</button><button id="gif">GIF</button><button id="boom">Boomerang</button><button id="dlv" hidden>Download video</button><button id="retake">Retake</button></div>
   <div class="row" id="poses"></div>
+  <p class="hint" style="margin:0;text-align:center">Drag one photo onto another to swap them.</p>
   <video id="replay" controls playsinline hidden></video>
  </div>
 </section>
@@ -131,6 +135,7 @@ dialog::backdrop{background:#000a}dialog h2{font:400 22px Shrikhand,cursive;colo
   <label class="f"><input type="checkbox" id="rv"> Record video (full strip frame the whole time)</label>
   <div><label class="f"><input type="checkbox" id="burst"> Burst mode: one countdown, then rapid poses</label>
    <div class="seg" data-key="gap" data-num style="margin-top:8px"><button data-v="600">Fast</button><button data-v="1000">Normal</button><button data-v="2000">Slow</button></div></div>
+  <div><h2>Camera sleep</h2><div class="seg" data-key="sleep" data-num><button data-v="2">2 min</button><button data-v="5">5 min</button><button data-v="10">10 min</button><button data-v="0">Never</button></div><p class="hint">Turns the camera off after no activity, to save battery.</p></div>
  </div>
  <div class="tab" data-tab="style" hidden>
   <div><h2>Theme</h2><div class="sw" id="themes"></div>
@@ -139,7 +144,8 @@ dialog::backdrop{background:#000a}dialog h2{font:400 22px Shrikhand,cursive;colo
   <div><h2>Texture</h2><div class="seg" data-key="tex"><button data-v="none">None</button><button data-v="grain">Grain</button><button data-v="linen">Linen</button><button data-v="worn">Worn</button></div></div>
   <div><h2>Footer</h2><input type="text" id="text" maxlength="28" placeholder="Event name"><h2 style="margin:12px 0 7px">Date stamp</h2><div class="seg" data-key="dstyle"><button data-v="off">None</button><button data-v="footer">Footer</button><button data-v="film">Film</button><button data-v="stamp">Rubber</button></div></div>
  </div>
- <div class="tab" data-tab="stk" hidden><div id="stkBox" class="dis"><h2>Stickers</h2><p style="margin:0 0 8px;font-size:12px">Unlocks once your strip is developed.</p><div class="stk" id="stk"></div>
+ <div class="tab" data-tab="stk" hidden><div id="stkBox" class="dis"><h2>Stickers</h2><p style="margin:0 0 8px;font-size:12px">Unlocks once your strip is developed.</p><div class="row" style="justify-content:flex-start;margin:0 0 10px"><button id="undo">↶ Undo</button><button id="redo">↷ Redo</button><button id="dup">Duplicate</button><button id="flip">Flip</button></div>
+  <div class="stk" id="stk"></div>
   <div class="row" style="margin-top:10px;justify-content:flex-start;flex-wrap:nowrap"><input type="text" id="stkText" maxlength="20" placeholder="Your words" style="flex:1;min-width:0"><input type="color" id="stkColor" value="#d63c2b"><button id="addText">Add</button></div>
   <label class="btn" style="display:block;margin-top:10px;text-align:center">Upload your own image<input type="file" id="upload" accept="image/*" hidden></label>
   <p style="margin:8px 0 0;font-size:12px">Drag to move. The corner dot resizes and rotates, × deletes. Pinch or scroll works too.</p></div></div>
@@ -224,9 +230,9 @@ const STICKERS = ["⭐","❤️","😎","🎀","🌈","🎈","💋","🎩","✨"
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
 /* ---------- State ---------- */
-const state = { layout:"strip", timer:3, film:"none", record:false, mirror:true, theme:"deco", kmode:"off", ktol:50, kbg:"studio", burst:false, gap:1000, paper:"exact", copies:"1", pat:"theme", tex:"grain", border:"frame", done:false, bg:null, ink:null,
+const state = { layout:"strip", timer:3, film:"none", record:false, mirror:true, theme:"deco", kmode:"off", ktol:50, kbg:"studio", burst:false, gap:1000, paper:"exact", copies:"1", sleep:5, pat:"theme", tex:"grain", border:"frame", done:false, bg:null, ink:null,
   text:"", dstyle:"off", stickers:[], sel:-1, shots:[], busy:false };
-const PERSIST = ["layout","timer","film","record","theme","bg","ink","pat","tex","border","text","dstyle","burst","gap","paper","copies"];
+const PERSIST = ["layout","timer","film","record","theme","bg","ink","pat","tex","border","text","dstyle","burst","gap","paper","copies","sleep"];
 try { const saved = JSON.parse(localStorage.getItem("pb:v1") || "{}"); PERSIST.forEach(k => { if (k in saved) state[k] = saved[k]; }); } catch {}
 if (!LAYOUTS[state.layout]) state.layout = "strip"; if (!THEMES[state.theme]) state.theme = "deco"; if (!FILMS[state.film]) state.film = "none";
 const slotsOf = L => {
@@ -361,7 +367,7 @@ const DEFS = {
 const Stickers = {
   cache: {}, P(d) { return this.cache[d] ||= new Path2D(d); },
   draw(g, k) {
-    g.save(); g.translate(k.x, k.y); g.rotate(k.rot); const sc = k.size/100; g.scale(sc, sc); g.translate(-50, -50); g.lineJoin = g.lineCap = "round";
+    g.save(); g.translate(k.x, k.y); g.rotate(k.rot); if (k.flip) g.scale(-1, 1); const sc = k.size/100; g.scale(sc, sc); g.translate(-50, -50); g.lineJoin = g.lineCap = "round";
     const lift = () => { g.shadowColor = "rgba(0,0,0,.35)"; g.shadowBlur = 8*sc; g.shadowOffsetY = 3*sc; };
     if (k.kind === "img") { const m = Math.max(k.img.width, k.img.height), w = k.img.width/m*100, h = k.img.height/m*100; lift(); g.drawImage(k.img, 50-w/2, 50-h/2, w, h); }
     else if (k.kind === "text") {
@@ -456,6 +462,7 @@ const Compositor = {
     if (Custom.over) g.drawImage(Custom.over, 0, 0, L.w, L.h);
     state.stickers.forEach(k => Stickers.draw(g, k));
     if (guides && state.sel >= 0) this.handles(g, canvas);
+    if (guides && Drag.active) this.dragGhost(g, L);
   },
   pattern(g, L, kind, ink) {
     g.save(); g.globalAlpha = .12; g.fillStyle = g.strokeStyle = ink;
@@ -526,6 +533,12 @@ const Compositor = {
       let sz = L.foot*.36; g.font = f(sz); const maxW = L.w-2*(L.pad || 40), w = g.measureText(main).width; if (w > maxW) { sz *= maxW/w; g.font = f(sz); }
       g.fillText(main, L.w/2, date ? cy-22 : cy); }
     if (date) { g.font = `700 ${L.foot*.14}px "Space Mono",monospace`; g.fillText(date, L.w/2, main ? cy+L.foot*.22 : cy); }
+  },
+  dragGhost(g, L) {
+    const sl = slotsOf(L), a = sl[Drag.from], b = sl[Drag.to]; g.save();
+    if (b && Drag.to !== Drag.from) { g.strokeStyle = "#fff"; g.lineWidth = 8; g.setLineDash([22, 14]); g.strokeRect(b.x, b.y, b.w, b.h); g.fillStyle = "rgba(255,255,255,.25)"; g.fillRect(b.x, b.y, b.w, b.h); }
+    if (a) { const w = a.w*.5, h = a.h*.5; g.globalAlpha = .85; g.shadowColor = "rgba(0,0,0,.5)"; g.shadowBlur = 24; g.drawImage(Film.shot(Drag.from, a), Drag.x-w/2, Drag.y-h/2, w, h); }
+    g.restore();
   },
   handleR: c => 22*c.width/(c.getBoundingClientRect().width || c.width),
   handles(g, c) {
@@ -657,19 +670,28 @@ function syncFinder() {
 function syncSegs() { $("#kcap").hidden = state.kmode !== "room";
   $("#kHint").textContent = { off:"Cut yourself out of the background and swap it for a new one.", room:"Auto: step out of the frame when asked, then step back in. Keep the camera still.", pick:"Tap the plain wall or cloth in the camera view to remove that color.", green:"Use an evenly lit green cloth behind you.", blue:"Use an evenly lit blue cloth behind you." }[state.kmode];
   finder.style.cursor = state.kmode === "pick" ? "crosshair" : ""; $$(".seg").forEach(seg => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === String(state[seg.dataset.key])))); }
+const Hist = { undo:[], redo:[], max:60,
+  snap() { this.undo.push(state.stickers.map(k => ({ ...k }))); if (this.undo.length > this.max) this.undo.shift(); this.redo = []; },
+  clear() { this.undo = []; this.redo = []; },
+  go(from, to) { if (!from.length) return; to.push(state.stickers.map(k => ({ ...k }))); state.stickers = from.pop(); state.sel = -1; redraw(); },
+};
+const undo = () => Hist.go(Hist.undo, Hist.redo), redo = () => Hist.go(Hist.redo, Hist.undo);
+const Drag = { active:false, from:-1, to:-1, x:0, y:0 };
+let asleep = false, lastAct = Date.now();
 let saveT;
 function redraw() {
   clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem("pb:v1", JSON.stringify(Object.fromEntries(PERSIST.map(k => [k, state[k]])))); } catch {} }, 500);
   if (!$("#booth").hidden) Compositor.render($("#live"));
   if (!$("#develop").hidden) Compositor.render(strip, { guides:true });
   $("#stkBox").classList.toggle("dis", $("#develop").hidden);
+  $("#undo").disabled = !Hist.undo.length; $("#redo").disabled = !Hist.redo.length; $("#dup").disabled = $("#flip").disabled = state.sel < 0;
 }
-async function startCamera(next = false) {
+async function startCamera(sel = false) {
   try {
     showMsg("Waiting for camera permission…", false);
-    const n = next ? (await Camera.next(), Camera.devices.length) : await Camera.start();
-    if (next && Keyer.ref) { Keyer.ref = null; Keyer.id++; View.msg = "Camera changed: re-capture the background"; setTimeout(() => View.msg = "", 2500); }
-    $("#switch").parentElement.hidden = n < 2; $("#msg").hidden = true; $("#shutter").disabled = false; syncFinder();
+    const n = sel ? (await (sel === true ? Camera.next() : Camera.start(sel)), Camera.devices.length) : await Camera.start();
+    if (sel && Keyer.ref) { Keyer.ref = null; Keyer.id++; View.msg = "Camera changed: re-capture the background"; setTimeout(() => View.msg = "", 2500); }
+    $("#switch").parentElement.hidden = n < 2; $("#msg").hidden = true; $("#shutter").disabled = false; asleep = false; lastAct = Date.now(); renderCams(); syncFinder();
   } catch (e) { showMsg(e.name === "NotAllowedError" ? "Camera blocked. Allow access in your browser, then try again." : "No usable camera found."); }
 }
 const setBusy = on => { state.busy = on; $("#shutter").classList.toggle("busy", on); $("#shutter").setAttribute("aria-label", on ? "Stop" : "Take photos"); $("#shutter").nextElementSibling.textContent = on ? "Stop" : "Shoot"; };
@@ -679,7 +701,7 @@ async function countdown(sec) {
 }
 /** Take every pose. Tap the shutter again (or press Esc) to cancel; anything that goes wrong still releases the booth. */
 async function runSession() {
-  if (state.busy) return; state.cancel = false; state.session = true; setBusy(true); state.done = false; state.stickers = []; state.sel = -1; Sound.unlock(); Clips.data = {}; Clips.pend = null; state.shots = []; Film.cache.clear(); redraw();
+  if (state.busy || !Camera.el.srcObject) return; state.cancel = false; state.session = true; setBusy(true); state.done = false; state.stickers = []; Hist.clear(); state.sel = -1; Sound.unlock(); Clips.data = {}; Clips.pend = null; state.shots = []; Film.cache.clear(); redraw();
   let rec = false;
   try {
     const slots = slotsOf(LY());
@@ -699,15 +721,23 @@ async function runSession() {
   develop();                                     // instant preview, no waiting for the video
   if (rec) { await sleep(2200); showVideo(await Recorder.stop()); }
 }
+function buildPoses() { $("#poses").replaceChildren(...state.shots.map((_, i) => { const b = mkBtn(`↻ Pose ${i+1}`, ""); b.onclick = () => retakeOne(i); return b; })); }
+function swapSlots(a, b) {
+  const n = slotsOf(LY()).length, m = state.shots.length;
+  if (m < n) { state.shots = Array.from({ length:n }, (_, i) => state.shots[i % m]); const cd = {}; for (let i = 0; i < n; i++) cd[i] = Clips.data[i % m]; Clips.data = cd; }
+  [state.shots[a], state.shots[b]] = [state.shots[b], state.shots[a]]; [Clips.data[a], Clips.data[b]] = [Clips.data[b], Clips.data[a]];
+  Film.cache.clear(); buildPoses();
+}
 function showVideo(b) { if (!b) return; const old = $("#replay").src; if (old && old.startsWith("blob:")) URL.revokeObjectURL(old); $("#replay").src = URL.createObjectURL(b); $("#replay").hidden = $("#dlv").hidden = false; }
 function develop(keep) {
-  state.done = true; if (!keep) showTab("stk"); $("#pv").hidden = true; if (!keep) { state.stickers = []; state.sel = -1; } $("#booth").hidden = true; $("#develop").hidden = false;
+  state.done = true; if (!keep) showTab("stk"); $("#pv").hidden = true; if (!keep) { state.stickers = []; state.sel = -1; Hist.clear(); } $("#booth").hidden = true; $("#develop").hidden = false;
   $("#replay").hidden = $("#dlv").hidden = true;
-  $("#poses").replaceChildren(...state.shots.map((_, i) => { const b = mkBtn(`↻ Pose ${i+1}`, ""); b.onclick = () => retakeOne(i); return b; })); redraw();
+  buildPoses(); redraw();
   const o = $("#out"); o.style.animation = "none"; void o.offsetWidth; o.style.animation = "";
 }
 async function retakeOne(i) {
-  if (state.busy) return; state.cancel = false; state.session = true; setBusy(true); state.done = false; Sound.unlock();
+  if (state.busy) return; if (!Camera.el.srcObject) { await startCamera(); if (!Camera.el.srcObject) return; }
+  state.cancel = false; state.session = true; setBusy(true); state.done = false; Sound.unlock();
   $("#develop").hidden = true; $("#booth").hidden = false; $("#pv").hidden = false; redraw();
   try { await countdown(state.timer);
     if (!state.cancel) { View.flashT = performance.now(); Sound.shutter(); state.shots[i] = Camera.grab(); Clips.mark(i); Film.cache.clear(); redraw(); await sleep(450); } }
@@ -716,11 +746,13 @@ async function retakeOne(i) {
 function retake() { showTab("shoot"); $("#develop").hidden = true; $("#booth").hidden = false; $("#pv").hidden = false; state.done = false; state.shots = []; Film.cache.clear(); $("#replay").removeAttribute("src"); redraw(); }
 
 /* ---------- Sticker transform: move, corner handle (resize + rotate), pinch, wheel ---------- */
-const ptrs = new Map(); let mode = null, pinch = null;
+const ptrs = new Map(); let mode = null, pinch = null, wheelT = 0;
+const slotAt = p => slotsOf(LY()).findIndex(s => p.x >= s.x && p.x <= s.x+s.w && p.y >= s.y && p.y <= s.y+s.h);
+function dragSlot(p) { if (!mode.moved && Math.hypot(p.x-mode.sx, p.y-mode.sy) < 14) return; mode.moved = true; Object.assign(Drag, { active:true, from:mode.from, to:slotAt(p), x:p.x, y:p.y }); strip.style.cursor = "grabbing"; redraw(); }
 const toCanvas = e => { const r = strip.getBoundingClientRect(); return { x:(e.clientX-r.left)*strip.width/r.width, y:(e.clientY-r.top)*strip.height/r.height }; };
 const local = (k, p) => { const c = Math.cos(-k.rot), s = Math.sin(-k.rot), dx = p.x-k.x, dy = p.y-k.y; return { x:dx*c-dy*s, y:dx*s+dy*c }; };
 const two = () => { const [a, b] = [...ptrs.values()]; return { d:Math.hypot(a.x-b.x, a.y-b.y), a:Math.atan2(b.y-a.y, b.x-a.x) }; };
-const remove = () => { if (state.sel >= 0) { state.stickers.splice(state.sel, 1); state.sel = -1; redraw(); } };
+const remove = () => { if (state.sel >= 0) { Hist.snap(); state.stickers.splice(state.sel, 1); state.sel = -1; redraw(); } };
 strip.addEventListener("pointerdown", e => {
   const p = toCanvas(e); ptrs.set(e.pointerId, p); strip.setPointerCapture(e.pointerId);
   let k = state.stickers[state.sel];
@@ -731,21 +763,25 @@ strip.addEventListener("pointerdown", e => {
   let hit = -1;
   for (let i = state.stickers.length-1; i >= 0; i--) { const q = state.stickers[i], lp = local(q, p); if (Math.abs(lp.x) < q.size*.6 && Math.abs(lp.y) < q.size*.6) { hit = i; break; } }
   if (hit >= 0) { [k] = state.stickers.splice(hit, 1); state.stickers.push(k); state.sel = state.stickers.length-1; mode = { t:"mv", dx:k.x-p.x, dy:k.y-p.y }; }
-  else { state.sel = -1; mode = null; }
+  else { state.sel = -1; const si = slotAt(p); mode = si >= 0 && state.shots.length ? { t:"slot", from:si, sx:p.x, sy:p.y, moved:false } : null; }
   redraw();
 });
 strip.addEventListener("pointermove", e => {
-  if (!ptrs.has(e.pointerId)) return; const p = toCanvas(e); ptrs.set(e.pointerId, p); const k = state.stickers[state.sel]; if (!k) return;
-  if (ptrs.size === 2 && pinch) { const t = two(); k.size = clamp(pinch.s*t.d/pinch.d, 60, 700); k.rot = pinch.r+t.a-pinch.a; }
-  else if (mode?.t === "mv") { k.x = p.x+mode.dx; k.y = p.y+mode.dy; }
-  else if (mode?.t === "xf") { k.size = clamp(mode.s*Math.hypot(p.x-k.x, p.y-k.y)/mode.d, 60, 700); k.rot = mode.r+Math.atan2(p.y-k.y, p.x-k.x)-mode.a; }
+  if (!ptrs.has(e.pointerId)) return; const p = toCanvas(e); ptrs.set(e.pointerId, p);
+  if (mode?.t === "slot") return dragSlot(p);
+  const k = state.stickers[state.sel]; if (!k) return;
+  if (ptrs.size === 2 && pinch) { if (!pinch.dirty) { Hist.snap(); pinch.dirty = true; } const t = two(); k.size = clamp(pinch.s*t.d/pinch.d, 60, 700); k.rot = pinch.r+t.a-pinch.a; }
+  else if (mode?.t === "mv") { if (!mode.dirty) { Hist.snap(); mode.dirty = true; } k.x = p.x+mode.dx; k.y = p.y+mode.dy; }
+  else if (mode?.t === "xf") { if (!mode.dirty) { Hist.snap(); mode.dirty = true; } k.size = clamp(mode.s*Math.hypot(p.x-k.x, p.y-k.y)/mode.d, 60, 700); k.rot = mode.r+Math.atan2(p.y-k.y, p.x-k.x)-mode.a; }
   else return;
   redraw();
 });
-const up = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) mode = null; };
+const up = e => {
+  if (mode?.t === "slot") { if (mode.moved && Drag.to >= 0 && Drag.to !== mode.from) swapSlots(mode.from, Drag.to); Drag.active = false; strip.style.cursor = "grab"; mode = null; redraw(); }
+  ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (!ptrs.size) mode = null; };
 strip.addEventListener("pointerup", up); strip.addEventListener("pointercancel", up);
 strip.addEventListener("wheel", e => { const k = state.stickers[state.sel]; if (!k) return; e.preventDefault();
-  const dy = e.deltaY || e.deltaX; if (e.shiftKey) k.rot += dy*.003; else k.size = clamp(k.size*Math.exp(-dy*.0015), 60, 700); redraw(); }, { passive:false });
+  const dy = e.deltaY || e.deltaX; if (performance.now()-wheelT > 500) Hist.snap(); wheelT = performance.now(); if (e.shiftKey) k.rot += dy*.003; else k.size = clamp(k.size*Math.exp(-dy*.0015), 60, 700); redraw(); }, { passive:false });
 
 /* ---------- Wire up ---------- */
 const mkBtn = (text, v) => { const b = document.createElement("button"); b.textContent = text; b.dataset.v = v; return b; };
@@ -757,7 +793,7 @@ $$(".seg").forEach(seg => seg.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b || state.busy) return;
   const key = seg.dataset.key; const o = LAYOUTS[state.layout];
   state[key] = "num" in seg.dataset ? +b.dataset.v : b.dataset.v;
-  if (key === "layout") { const n = LAYOUTS[state.layout]; state.stickers.forEach(k => { k.x *= n.w/o.w; k.y *= n.h/o.h; k.size *= Math.min(n.w,n.h)/Math.min(o.w,o.h); }); }
+  if (key === "layout") { Hist.clear(); const n = LAYOUTS[state.layout]; state.stickers.forEach(k => { k.x *= n.w/o.w; k.y *= n.h/o.h; k.size *= Math.min(n.w,n.h)/Math.min(o.w,o.h); }); }
   if (key === "kmode" && state.kmode === "room" && !Keyer.ref) captureBg(); syncSegs(); syncFinder(); redraw();
 }));
 $("#themes").append(...Object.entries(THEMES).map(([id, t]) => Object.assign(document.createElement("button"), { title:id, ariaLabel:`${id} theme`,
@@ -792,18 +828,40 @@ $("#bgIn").onchange = e => { const f = e.target.files[0]; if (f) loadImg(f, img 
 $("#overClear").onclick = () => { Custom.over = Custom.bg = null; Custom.id++; redraw(); };
 $("#guide").onclick = async () => { const L = LY(), c = mk(L.w, L.h), g = c.getContext("2d"); g.fillStyle = "rgba(255,45,149,.55)"; g.fillRect(0, 0, L.w, L.h);
   slotsOf(L).forEach(s => g.clearRect(s.x, s.y, s.w, s.h)); download(await toPng(c), `frame-template-${state.layout}-${L.w}x${L.h}.png`); };
-const addSticker = k => { const L = LAYOUTS[state.layout]; state.stickers.push({ size:Math.min(L.w, L.h)*.22, rot:(Math.random()-.5)*.3, x:L.w/2+(Math.random()-.5)*L.w*.35, y:L.h/2+(Math.random()-.5)*L.h*.35, ...k }); state.sel = state.stickers.length-1; redraw(); };
+const addSticker = k => { Hist.snap(); const L = LAYOUTS[state.layout]; state.stickers.push({ size:Math.min(L.w, L.h)*.22, rot:(Math.random()-.5)*.3, x:L.w/2+(Math.random()-.5)*L.w*.35, y:L.h/2+(Math.random()-.5)*L.h*.35, ...k }); state.sel = state.stickers.length-1; redraw(); };
 $("#stk").append(...Object.keys(DEFS).map(id => { const c = Object.assign(document.createElement("canvas"), { width:104, height:104 }), b = document.createElement("button");
   Stickers.draw(c.getContext("2d"), { id, x:52, y:52, size:88, rot:0 }); b.append(c); b.title = DEFS[id].n; b.setAttribute("aria-label", `Add ${DEFS[id].n} sticker`); b.onclick = () => addSticker({ id }); return b; }));
+const dup = () => { const k = state.stickers[state.sel]; if (!k) return; Hist.snap(); state.stickers.push({ ...k, x:k.x+k.size*.18, y:k.y+k.size*.18 }); state.sel = state.stickers.length-1; redraw(); };
+const flip = () => { const k = state.stickers[state.sel]; if (!k) return; Hist.snap(); k.flip = !k.flip; redraw(); };
+$("#undo").onclick = undo; $("#redo").onclick = redo; $("#dup").onclick = dup; $("#flip").onclick = flip;
 $("#addText").onclick = () => { const t = $("#stkText").value.trim(); if (t) { addSticker({ kind:"text", text:t, color:$("#stkColor").value }); $("#stkText").value = ""; } };
 $("#upload").onchange = e => { const f = e.target.files[0]; if (!f) return; const img = new Image(); img.onload = () => addSticker({ kind:"img", img }); img.src = URL.createObjectURL(f); e.target.value = ""; };
 
 function showTab(name) { $$("[role=tab]").forEach(x => x.setAttribute("aria-selected", x.dataset.tab === name)); $$(".tab").forEach(p => p.hidden = p.dataset.tab !== name); }
 $$("[role=tab]").forEach(t => t.onclick = () => showTab(t.dataset.tab));
 addEventListener("keydown", e => { const typing = /INPUT/.test(document.activeElement.tagName); if (e.key === "Escape" && state.session) state.cancel = true;
+  if ((e.ctrlKey || e.metaKey) && !typing) { const k = e.key.toLowerCase(); if (k === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); } else if (k === "y") { e.preventDefault(); redo(); } else if (k === "d" && state.sel >= 0) { e.preventDefault(); dup(); } }
   if ((e.key === "Delete" || e.key === "Backspace") && !typing) remove();
   if (e.code === "Space" && !$("#booth").hidden && !typing && document.activeElement.tagName !== "BUTTON") { e.preventDefault(); runSession(); } });
-$("#start").onclick = () => startCamera(); $("#switch").onclick = () => startCamera(true);
+$("#start").onclick = () => startCamera();
+const dedupe = a => a.map((n, i) => a.filter(x => x === n).length > 1 ? `${n} ${a.slice(0, i+1).filter(x => x === n).length}` : n);
+const camLabel = (d, i) => { const n = (d.label || "").replace(/^camera2? \d+, facing (front|back).*/i, (_, f) => `${f[0].toUpperCase()}${f.slice(1).toLowerCase()} camera`).replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)/i, "").trim() || `Camera ${i+1}`, l = n.toLowerCase(),
+  kind = /front|user|facetime/.test(l) ? "Front" : /back|rear|environment/.test(l) ? "Back" : ""; return kind && !l.includes(kind.toLowerCase()) ? `${kind} · ${n}` : n; };
+/** Shows which camera is active and which one a tap will switch to (a menu when there are 3 or more). */
+function renderCams() {
+  const ds = Camera.devices, cur = Camera.idx; if (ds.length < 2) return;
+  const ni = (cur+1) % ds.length, menu = $("#camMenu"), names = dedupe(ds.map(camLabel));
+  $("#camName").textContent = ds.length === 2 ? `→ ${names[ni]}` : `${names[cur]} ▾`;
+  $("#switch").title = ds.length === 2 ? `Switch to ${names[ni]}` : "Choose a camera";
+  menu.replaceChildren(...ds.map((d, i) => { const b = document.createElement("button"); b.setAttribute("role", "menuitemradio"); b.setAttribute("aria-checked", i === cur); b.textContent = names[i];
+    b.onclick = () => { menu.hidden = true; if (i !== cur) startCamera(d.deviceId); }; return b; }));
+}
+$("#switch").onclick = e => { e.stopPropagation(); if (Camera.devices.length > 2) $("#camMenu").hidden = !$("#camMenu").hidden; else startCamera(true); };
+document.addEventListener("click", e => { if (!e.target.closest("#camMenu")) $("#camMenu").hidden = true; });
+/* Camera sleep: stop the stream after a period without interaction. */
+["pointerdown", "keydown", "pointermove", "wheel", "touchstart"].forEach(t => addEventListener(t, () => { lastAct = Date.now(); }, { passive:true }));
+setInterval(() => { if (state.sleep && !asleep && !state.busy && Camera.el.srcObject && Date.now()-lastAct > state.sleep*60000) {
+  asleep = true; Camera.stop(); Camera.el.srcObject = null; $("#shutter").disabled = true; showMsg("Camera paused to save battery.", true); $("#start").textContent = "Wake camera"; } }, 5000);
 $("#mirror").onclick = () => { state.mirror = !state.mirror;
   if (Keyer.ref) { const r = Keyer.ref, c = mk(r.width, r.height), g = c.getContext("2d"); g.translate(r.width, 0); g.scale(-1, 1); g.drawImage(r, 0, 0); Keyer.ref = c; Keyer.id++; }
   syncFinder(); };
